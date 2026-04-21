@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "BEA Tasks",
+    "slug": "bea-tasks",
+    "version": "1.0.0",
+    "orientation": "portrait",
+
+    "userInterfaceStyle": "light",
+    "splash": {
+      
+      "resizeMode": "contain",
+      "backgroundColor": "#0D2B6E"
+    },
+    "ios": { "supportsTablet": false },
+    "android": {
+      "adaptiveIcon": {
+        
+        "backgroundColor": "#0D2B6E"
+      }
+    }
+  }
+}
