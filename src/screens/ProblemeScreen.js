@@ -1,202 +1,382 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator, RefreshControl, ScrollView
-} from 'react-native';
-import { getMesProblemes, declarerProbleme, getProjets } from '../api/api';
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  Modal,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+} from "react-native";
+import { getMesProblemes, declarerProbleme, getProjets } from "../api/api";
 
-const PRIORITES = ['BASSE', 'MOYENNE', 'HAUTE', 'CRITIQUE'];
-const STATUT_COLORS = {
-  OUVERT:   { bg: '#FFF3CD', txt: '#856404' },
-  EN_COURS: { bg: '#CCE5FF', txt: '#004085' },
-  RESOLU:   { bg: '#D4EDDA', txt: '#155724' },
-  FERME:    { bg: '#F0F0F0', txt: '#666' },
+const COLORS = {
+  primary: "#0D2B6E",
+  accent: "#5BB8E8",
+  bg: "#F5F8FD",
+  card: "#fff",
+  border: "#E0EAF5",
+  text: "#1A2B4A",
+  muted: "#8A9FBF",
+  warning: "#F39C12",
+  danger: "#E74C3C",
+  success: "#27AE60",
+};
+
+const PRIORITE_COLORS = {
+  BASSE: COLORS.success,
+  MOYENNE: COLORS.warning,
+  HAUTE: COLORS.danger,
 };
 
 export default function ProblemeScreen() {
   const [problemes, setProblemes] = useState([]);
-  const [projets, setProjets]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [showForm, setShowForm]   = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [form, setForm]           = useState({
-    titre: '', description: '', priorite: 'MOYENNE', projetId: null
-  });
-  const [saving, setSaving]       = useState(false);
+  const [projets, setProjets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [formTitre, setFormTitre] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formProjet, setFormProjet] = useState(null);
+  const [formPriorite, setFormPriorite] = useState("MOYENNE");
+  const [saving, setSaving] = useState(false);
 
-  async function load() {
-    try {
+  useEffect(() => {
+    (async () => {
       const [p, pr] = await Promise.all([getMesProblemes(), getProjets()]);
       setProblemes(p);
       setProjets(pr);
-    } catch (e) {}
-    finally { setLoading(false); setRefreshing(false); }
-  }
+      setLoading(false);
+    })();
+  }, []);
 
-  useEffect(() => { load(); }, []);
-
-  async function handleDeclarer() {
-    if (!form.titre.trim()) {
-      Alert.alert('Champ requis', 'Le titre est obligatoire.');
+  const handleDeclarer = async () => {
+    if (!formTitre.trim()) {
+      Alert.alert("Titre requis");
       return;
     }
     setSaving(true);
     try {
-      await declarerProbleme(form);
-      Alert.alert('✅ Envoyé', 'Problème déclaré au PMO avec succès.');
-      setForm({ titre: '', description: '', priorite: 'MOYENNE', projetId: null });
-      setShowForm(false);
-      load();
+      const newP = await declarerProbleme({
+        titre: formTitre.trim(),
+        description: formDesc.trim(),
+        projetId: formProjet?.id || null,
+        priorite: formPriorite,
+      });
+      setProblemes((prev) => [newP, ...prev]);
+      setFormTitre("");
+      setFormDesc("");
+      setFormProjet(null);
+      setFormPriorite("MOYENNE");
+      setModalVisible(false);
     } catch (e) {
-      Alert.alert('Erreur', e.message);
+      Alert.alert("Erreur", e.message);
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  function renderProbleme({ item }) {
-    const sc = STATUT_COLORS[item.statut] || STATUT_COLORS.OUVERT;
+  if (loading) {
     return (
-      <View style={s.card}>
-        <View style={s.cardTop}>
-          <Text style={s.cardTitre} numberOfLines={1}>{item.titre}</Text>
-          <View style={[s.badge, { backgroundColor: sc.bg }]}>
-            <Text style={[s.badgeTxt, { color: sc.txt }]}>{item.statut}</Text>
-          </View>
-        </View>
-        {item.description ? <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text> : null}
-        <View style={s.cardMeta}>
-          <Text style={s.metaTxt}>⚡ {item.priorite}</Text>
-          {item.projet && <Text style={s.metaTxt}>📁 {item.projet.nom}</Text>}
-        </View>
-        {item.commentairePmo && (
-          <View style={s.pmoComment}>
-            <Text style={s.pmoTxt}>💬 PMO : {item.commentairePmo}</Text>
-          </View>
-        )}
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
-  if (loading) return (
-    <View style={s.center}><ActivityIndicator size="large" color="#0D2B6E" /></View>
-  );
-
   return (
-    <View style={s.root}>
-      <View style={s.header}>
-        <Text style={s.headerTitle}>Mes problèmes</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowForm(!showForm)}>
-          <Text style={s.addBtnTxt}>{showForm ? '✕ Annuler' : '+ Déclarer'}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {showForm && (
-        <ScrollView style={s.form}>
-          <Text style={s.formTitle}>Déclarer un problème au PMO</Text>
-
-          <Text style={s.label}>Titre *</Text>
-          <TextInput style={s.input} placeholder="Titre du problème"
-            placeholderTextColor="#B0BDD0" value={form.titre}
-            onChangeText={v => setForm(f => ({ ...f, titre: v }))} />
-
-          <Text style={s.label}>Priorité</Text>
-          <View style={s.prioriteRow}>
-            {PRIORITES.map(p => (
-              <TouchableOpacity key={p}
-                style={[s.prioriteBtn, form.priorite === p && s.prioriteBtnActive]}
-                onPress={() => setForm(f => ({ ...f, priorite: p }))}>
-                <Text style={[s.prioriteBtnTxt, form.priorite === p && s.prioriteBtnTxtActive]}>
-                  {p}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <Text style={s.label}>Description</Text>
-          <TextInput style={[s.input, { height: 80, textAlignVertical: 'top' }]}
-            placeholder="Détaillez le problème..." placeholderTextColor="#B0BDD0"
-            multiline value={form.description}
-            onChangeText={v => setForm(f => ({ ...f, description: v }))} />
-
-          <Text style={s.label}>Projet concerné</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-            <TouchableOpacity style={[s.projetChip, !form.projetId && s.projetChipActive]}
-              onPress={() => setForm(f => ({ ...f, projetId: null }))}>
-              <Text style={!form.projetId ? s.chipTxtActive : s.chipTxt}>Aucun</Text>
-            </TouchableOpacity>
-            {projets.map(p => (
-              <TouchableOpacity key={p.id}
-                style={[s.projetChip, form.projetId === p.id && s.projetChipActive]}
-                onPress={() => setForm(f => ({ ...f, projetId: p.id }))}>
-                <Text style={form.projetId === p.id ? s.chipTxtActive : s.chipTxt} numberOfLines={1}>
-                  {p.nom}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          <TouchableOpacity style={s.sendBtn} onPress={handleDeclarer} disabled={saving}>
-            {saving
-              ? <ActivityIndicator color="#fff" />
-              : <Text style={s.sendBtnTxt}>📤 Envoyer au PMO</Text>}
-          </TouchableOpacity>
-        </ScrollView>
-      )}
-
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <FlatList
         data={problemes}
-        keyExtractor={i => String(i.id)}
-        renderItem={renderProbleme}
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={<RefreshControl refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); load(); }} />}
+        keyExtractor={(p) => String(p.id)}
+        contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
         ListEmptyComponent={
-          <Text style={s.empty}>🎉 Aucun problème déclaré</Text>
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>⚠️</Text>
+            <Text style={styles.emptyText}>Aucun problème déclaré</Text>
+          </View>
         }
+        renderItem={({ item: p }) => {
+          const color = PRIORITE_COLORS[p.priorite] || COLORS.muted;
+          return (
+            <View style={[styles.problemCard, { borderLeftColor: color }]}>
+              <View style={styles.problemHeader}>
+                <Text style={styles.problemTitre}>{p.titre}</Text>
+                <View
+                  style={[
+                    styles.prioriteBadge,
+                    { backgroundColor: color + "22" },
+                  ]}>
+                  <Text style={[styles.prioriteText, { color }]}>
+                    {p.priorite}
+                  </Text>
+                </View>
+              </View>
+              {p.description && (
+                <Text style={styles.problemDesc} numberOfLines={2}>
+                  {p.description}
+                </Text>
+              )}
+              {p.projetNom && (
+                <Text style={styles.problemProjet}>📁 {p.projetNom}</Text>
+              )}
+              <View
+                style={[
+                  styles.statutChip,
+                  { backgroundColor: COLORS.muted + "22" },
+                ]}>
+                <Text style={[styles.statutChipText, { color: COLORS.muted }]}>
+                  {p.statut || "OUVERT"}
+                </Text>
+              </View>
+            </View>
+          );
+        }}
       />
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => setModalVisible(true)}>
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+
+      {/* Modal déclarer problème */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalVisible(false)}>
+        <View style={styles.overlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Déclarer un problème</Text>
+
+            <Text style={styles.inputLabel}>Titre *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Titre du problème"
+              value={formTitre}
+              onChangeText={setFormTitre}
+            />
+
+            <Text style={styles.inputLabel}>Description</Text>
+            <TextInput
+              style={[styles.input, { height: 80, textAlignVertical: "top" }]}
+              placeholder="Décrivez le problème..."
+              value={formDesc}
+              onChangeText={setFormDesc}
+              multiline
+            />
+
+            <Text style={styles.inputLabel}>Projet concerné</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ marginBottom: 4 }}>
+              {projets.map((p) => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[
+                    styles.devChip,
+                    formProjet?.id === p.id && styles.devChipSel,
+                  ]}
+                  onPress={() => setFormProjet(p)}>
+                  <Text
+                    style={[
+                      styles.devChipTxt,
+                      formProjet?.id === p.id && { color: "#fff" },
+                    ]}>
+                    {p.nom}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <Text style={styles.inputLabel}>Priorité</Text>
+            <View style={styles.prioriteRow}>
+              {["BASSE", "MOYENNE", "HAUTE"].map((pr) => (
+                <TouchableOpacity
+                  key={pr}
+                  style={[
+                    styles.prioriteChip,
+                    { borderColor: PRIORITE_COLORS[pr] },
+                    formPriorite === pr && {
+                      backgroundColor: PRIORITE_COLORS[pr],
+                    },
+                  ]}
+                  onPress={() => setFormPriorite(pr)}>
+                  <Text
+                    style={[
+                      styles.prioriteChipTxt,
+                      {
+                        color:
+                          formPriorite === pr ? "#fff" : PRIORITE_COLORS[pr],
+                      },
+                    ]}>
+                    {pr}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.actions}>
+              <TouchableOpacity
+                style={styles.btnCancel}
+                onPress={() => setModalVisible(false)}>
+                <Text style={styles.btnCancelTxt}>Annuler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.btnSave}
+                onPress={handleDeclarer}
+                disabled={saving}>
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <Text style={styles.btnSaveTxt}>Déclarer</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  root:        { flex: 1, backgroundColor: '#F5F8FD' },
-  center:      { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header:      { backgroundColor: '#0D2B6E', flexDirection: 'row', justifyContent: 'space-between',
-                  alignItems: 'center', padding: 16, paddingTop: 50 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  addBtn:      { backgroundColor: '#E05A2B', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6 },
-  addBtnTxt:   { color: '#fff', fontWeight: '600', fontSize: 13 },
-  form:        { backgroundColor: '#fff', padding: 16, maxHeight: 420,
-                  borderBottomWidth: 0.5, borderBottomColor: '#E8EEF8' },
-  formTitle:   { fontSize: 14, fontWeight: '700', color: '#0D2B6E', marginBottom: 14 },
-  label:       { fontSize: 11, fontWeight: '600', color: '#4A6080', textTransform: 'uppercase',
-                  letterSpacing: 0.8, marginBottom: 6 },
-  input:       { backgroundColor: '#F5F8FD', borderWidth: 1.5, borderColor: '#D8E6F2',
-                  borderRadius: 8, padding: 11, fontSize: 14, color: '#1A2D5A', marginBottom: 14 },
-  prioriteRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-  prioriteBtn: { borderWidth: 1.5, borderColor: '#D8E6F2', borderRadius: 20,
-                  paddingHorizontal: 12, paddingVertical: 6 },
-  prioriteBtnActive:{ backgroundColor: '#0D2B6E', borderColor: '#0D2B6E' },
-  prioriteBtnTxt:   { fontSize: 12, color: '#4A6080' },
-  prioriteBtnTxtActive:{ color: '#fff', fontWeight: '600' },
-  projetChip:  { borderWidth: 1.5, borderColor: '#D8E6F2', borderRadius: 20,
-                  paddingHorizontal: 12, paddingVertical: 6, marginRight: 8, maxWidth: 160 },
-  projetChipActive:{ backgroundColor: '#0D2B6E', borderColor: '#0D2B6E' },
-  chipTxt:     { fontSize: 12, color: '#4A6080' },
-  chipTxtActive:{ color: '#fff', fontWeight: '600' },
-  sendBtn:     { backgroundColor: '#0D2B6E', borderRadius: 10, padding: 14, alignItems: 'center', marginBottom: 20 },
-  sendBtnTxt:  { color: '#fff', fontWeight: 'bold', fontSize: 14 },
-  card:        { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 10,
-                  borderWidth: 0.5, borderColor: '#E8EEF8', elevation: 2 },
-  cardTop:     { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
-  cardTitre:   { fontSize: 14, fontWeight: '700', color: '#0D2B6E', flex: 1, marginRight: 8 },
-  badge:       { borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeTxt:    { fontSize: 10, fontWeight: '700' },
-  cardDesc:    { fontSize: 12, color: '#6A80A0', marginBottom: 8 },
-  cardMeta:    { flexDirection: 'row', gap: 12 },
-  metaTxt:     { fontSize: 11, color: '#8A9FBF' },
-  pmoComment:  { marginTop: 8, backgroundColor: '#EEF4FF', borderRadius: 6, padding: 8 },
-  pmoTxt:      { fontSize: 12, color: '#4A6080' },
-  empty:       { textAlign: 'center', color: '#B0BDD0', marginTop: 40, fontSize: 14 },
+const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  emptyCard: {
+    padding: 40,
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  emptyIcon: { fontSize: 40, marginBottom: 12 },
+  emptyText: { color: COLORS.muted, fontSize: 15 },
+  problemCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderLeftWidth: 4,
+  },
+  problemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  problemTitre: {
+    color: COLORS.text,
+    fontWeight: "bold",
+    fontSize: 15,
+    flex: 1,
+  },
+  prioriteBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  prioriteText: { fontSize: 11, fontWeight: "700" },
+  problemDesc: { color: COLORS.muted, fontSize: 13, marginBottom: 6 },
+  problemProjet: { color: COLORS.accent, fontSize: 12, marginBottom: 6 },
+  statutChip: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statutChipText: { fontSize: 11, fontWeight: "600" },
+  fab: {
+    position: "absolute",
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.danger,
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 6,
+  },
+  fabText: { color: "#fff", fontSize: 32, lineHeight: 36, fontWeight: "300" },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalBox: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: COLORS.text,
+    marginBottom: 16,
+    textAlign: "center",
+  },
+  inputLabel: {
+    color: COLORS.muted,
+    fontSize: 13,
+    marginBottom: 4,
+    marginTop: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 14,
+    color: COLORS.text,
+    backgroundColor: COLORS.bg,
+  },
+  devChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginRight: 8,
+    backgroundColor: COLORS.bg,
+  },
+  devChipSel: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  devChipTxt: { color: COLORS.text, fontSize: 13 },
+  prioriteRow: { flexDirection: "row", gap: 8, marginTop: 4 },
+  prioriteChip: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 2,
+    alignItems: "center",
+  },
+  prioriteChipTxt: { fontWeight: "bold", fontSize: 13 },
+  actions: { flexDirection: "row", gap: 10, marginTop: 20 },
+  btnCancel: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: "center",
+  },
+  btnCancelTxt: { color: COLORS.muted, fontWeight: "600" },
+  btnSave: {
+    flex: 1,
+    padding: 14,
+    borderRadius: 12,
+    backgroundColor: COLORS.danger,
+    alignItems: "center",
+  },
+  btnSaveTxt: { color: "#fff", fontWeight: "bold", fontSize: 15 },
 });

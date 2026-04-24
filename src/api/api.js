@@ -1,15 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ⚠️  Remplacez par l'IP de votre PC (ipconfig → IPv4)
-// Exemple : http://localhost:8082/api
-// ✅ Remove "/users" from the base
+// ⚠️ Remplacez par l'IP de votre PC (ipconfig → IPv4)
 export const BASE_URL = "http://192.168.1.72:8081/api";
 
+// ─── Token helpers ────────────────────────────────────────────────────────────
 export async function getToken() {
   return await AsyncStorage.getItem("token");
 }
 
-export async function getAuthHeaders() {
+async function getAuthHeaders() {
   const token = await getToken();
   return {
     "Content-Type": "application/json",
@@ -24,7 +23,7 @@ async function apiFetch(path, options = {}) {
   return res;
 }
 
-// Auth
+// ─── Auth ─────────────────────────────────────────────────────────────────────
 export async function login(matricule, password) {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
@@ -36,7 +35,7 @@ export async function login(matricule, password) {
   return data;
 }
 
-// Projets
+// ─── Projets ──────────────────────────────────────────────────────────────────
 export async function getProjets() {
   const res = await apiFetch("/projets/all");
   if (!res.ok) throw new Error("Erreur chargement projets");
@@ -58,7 +57,48 @@ export async function createProjet(data) {
   return res.json();
 }
 
-// Notifications
+// ─── Tâches ───────────────────────────────────────────────────────────────────
+// Récupérer toutes les tâches du user connecté
+export async function getMesTaches() {
+  const res = await apiFetch("/taches/me");
+  if (!res.ok) return [];
+  return res.json();
+}
+
+// Récupérer les tâches d'un projet
+export async function getTachesProjet(projetId) {
+  const res = await apiFetch(`/taches/projet/${projetId}`);
+  if (!res.ok) return [];
+  return res.json();
+}
+
+// Créer une tâche (depuis l'app)
+export async function createTache(data) {
+  // data = { titre, description, projetId, assigneMatricule, dateEcheance }
+  const res = await apiFetch("/taches", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Erreur création tâche");
+  return res.json();
+}
+
+// Mettre à jour le statut d'une tâche
+export async function updateTacheStatut(id, statut) {
+  const res = await apiFetch(`/taches/${id}/statut`, {
+    method: "PATCH",
+    body: JSON.stringify({ statut }),
+  });
+  if (!res.ok) throw new Error("Erreur mise à jour tâche");
+  return res.json();
+}
+
+// Marquer tâche terminée
+export async function marquerTacheTerminee(id) {
+  return updateTacheStatut(id, "TERMINEE");
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
 export async function getNotifications() {
   const res = await apiFetch("/notifications/me");
   if (!res.ok) return [];
@@ -79,7 +119,7 @@ export async function markAllNotifsRead() {
   await apiFetch("/notifications/me/toutes-lues", { method: "PATCH" });
 }
 
-// Problèmes
+// ─── Problèmes ────────────────────────────────────────────────────────────────
 export async function getMesProblemes() {
   const res = await apiFetch("/problemes/mine");
   if (!res.ok) return [];
@@ -101,9 +141,15 @@ export async function declarerProbleme(data) {
   return res.json();
 }
 
-// Utilisateurs
+// ─── Utilisateurs ─────────────────────────────────────────────────────────────
 export async function getUsers() {
   const res = await apiFetch("/users");
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getDevelopeurs() {
+  const res = await apiFetch("/users/role/DEVELOPPEUR");
   if (!res.ok) return [];
   return res.json();
 }

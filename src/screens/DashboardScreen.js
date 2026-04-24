@@ -1,146 +1,306 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from "react";
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, ActivityIndicator, Alert
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../context/AuthContext';
-import { getProjets, getNotifCount } from '../api/api';
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
+} from "react-native";
 
-const STATUT_COLORS = {
-  EN_COURS:         { bg: '#EEF6FF', txt: '#185FA5' },
-  NON_COMMENCE:     { bg: '#FFF8E1', txt: '#BA7517' },
-  CLOTURE:          { bg: '#E6F7EE', txt: '#0F6E56' },
-  PAS_DE_VISIBILITE:{ bg: '#F1EFE8', txt: '#5F5E5A' },
-};
-const STATUT_LABELS = {
-  EN_COURS:         'En cours',
-  NON_COMMENCE:     'Non commencé',
-  CLOTURE:          'Clôturé',
-  PAS_DE_VISIBILITE:'Pas de visibilité',
+import { getNotifications, markNotifRead, getProjets } from "../api/api";
+import { useAuth, canCreateTache } from "../context/AuthContext";
+const COLORS = {
+  primary: "#0D2B6E",
+  accent: "#5BB8E8",
+  bg: "#F5F8FD",
+  card: "#fff",
+  border: "#E0EAF5",
+  text: "#1A2B4A",
+  muted: "#8A9FBF",
+  success: "#27AE60",
+  danger: "#E74C3C",
+  warning: "#F39C12",
 };
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }) {
   const { user, logout } = useAuth();
-  const navigation = useNavigation();
-  const [projets, setProjets]       = useState([]);
-  const [notifCount, setNotifCount] = useState(0);
-  const [loading, setLoading]       = useState(true);
+  const [notifs, setNotifs] = useState([]);
+  const [projets, setProjets] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const [p, n] = await Promise.all([getProjets(), getNotifCount()]);
+      const [n, p] = await Promise.all([getNotifications(), getProjets()]);
+      setNotifs(n.slice(0, 3)); // Afficher les 3 dernières
       setProjets(p);
-      setNotifCount(n.count || 0);
     } catch (e) {
-      if (e.message === 'SESSION_EXPIRED') {
-        Alert.alert('Session expirée', 'Reconnectez-vous.', [{ text: 'OK', onPress: logout }]);
-      }
+      console.error(e);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
-  const roleDisplay = {
-    ADMIN: 'Administrateur', DIRECTEUR: 'Directeur',
-    CHEF_DEPARTEMENT: 'Chef Département',
-    INGENIEUR_ETUDE_PMO: 'PMO', DEVELOPPEUR: 'Développeur',
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
   };
 
-  function renderProjet({ item }) {
-    const sc = STATUT_COLORS[item.statut] || STATUT_COLORS.NON_COMMENCE;
+  const dismissNotif = async (id) => {
+    await markNotifRead(id);
+    setNotifs((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const statutColor = (s) => {
+    if (!s) return COLORS.muted;
+    const sl = s.toUpperCase();
+    if (sl.includes("ACTIF") || sl.includes("EN_COURS")) return COLORS.success;
+    if (sl.includes("TERMINE")) return COLORS.primary;
+    if (sl.includes("RETARD")) return COLORS.danger;
+    return COLORS.warning;
+  };
+
+  if (loading) {
     return (
-      <TouchableOpacity style={s.card}
-        onPress={() => navigation.navigate('ProjetDetail', { projet: item })}>
-        <View style={s.cardTop}>
-          <Text style={s.cardNom} numberOfLines={1}>{item.nom}</Text>
-          <View style={[s.badge, { backgroundColor: sc.bg }]}>
-            <Text style={[s.badgeTxt, { color: sc.txt }]}>
-              {STATUT_LABELS[item.statut] || item.statut}
-            </Text>
-          </View>
-        </View>
-        <View style={s.cardMeta}>
-          <Text style={s.metaTxt}>
-            {item.type || '—'}  ·  {item.chefProjetNom || 'Non assigné'}
-          </Text>
-          {item.deadline && <Text style={s.metaTxt}>📅 {item.deadline}</Text>}
-        </View>
-      </TouchableOpacity>
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
     );
   }
 
-  if (loading) return (
-    <View style={s.center}><ActivityIndicator size="large" color="#0D2B6E" /></View>
-  );
-
   return (
-    <View style={s.root}>
-      {/* User info */}
-      <View style={s.userBanner}>
-        <View>
-          <Text style={s.userName}>{user?.prenom} {user?.nom}</Text>
-          <Text style={s.userRole}>{roleDisplay[user?.role] || user?.role}</Text>
-          <Text style={s.userMat}>{user?.matricule}</Text>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
+      {/* ── Header user ── */}
+      <View style={styles.header}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {(user?.prenom?.[0] || "") + (user?.nom?.[0] || "")}
+          </Text>
         </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          {notifCount > 0 && (
-            <View style={s.notifBadge}>
-              <Text style={s.notifBadgeTxt}>{notifCount > 99 ? '99+' : notifCount}</Text>
-            </View>
-          )}
-          <TouchableOpacity style={s.logoutBtn} onPress={logout}>
-            <Text style={s.logoutTxt}>Déconnexion</Text>
-          </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.userName}>
+            {user?.prenom} {user?.nom}
+          </Text>
+          <Text style={styles.userSub}>
+            {user?.matricule} · {user?.role}
+          </Text>
         </View>
+        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>Déconnexion</Text>
+        </TouchableOpacity>
       </View>
 
-      <Text style={s.sectionTitle}>Projets ({projets.length})</Text>
+      {/* ── Notifications résumé ── */}
+      {notifs.length > 0 && (
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle}>🔔 Notifications</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Notifications")}>
+              <Text style={styles.seeAll}>Voir tout</Text>
+            </TouchableOpacity>
+          </View>
+          {notifs.map((n) => (
+            <View key={n.id} style={styles.notifRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifDate}>{n.dateCreation || n.date}</Text>
+                <Text style={styles.notifMsg} numberOfLines={2}>
+                  {n.message}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => dismissNotif(n.id)}
+                style={styles.notifBtn}>
+                <Text style={styles.notifCheck}>✓</Text>
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+      )}
 
-      <FlatList
-        data={projets}
-        keyExtractor={i => String(i.id)}
-        renderItem={renderProjet}
-        contentContainerStyle={{ padding: 16, paddingTop: 0 }}
-        refreshControl={<RefreshControl refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); load(); }} />}
-        ListEmptyComponent={
-          <Text style={s.empty}>Aucun projet trouvé</Text>
-        }
-      />
-    </View>
+      {/* ── Projets ── */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Mes Projets</Text>
+        {canCreateTache(user) && (
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => navigation.navigate("CreateProjet")}>
+            <Text style={styles.addBtnText}>+ Nouveau</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {projets.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>Aucun projet assigné</Text>
+        </View>
+      ) : (
+        projets.map((p) => (
+          <TouchableOpacity
+            key={p.id}
+            style={styles.projetCard}
+            onPress={() =>
+              navigation.navigate("ProjetDetail", { projetId: p.id })
+            }
+            activeOpacity={0.8}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.projetNom}>{p.nom}</Text>
+              <Text style={styles.projetSub}>{p.matricule}</Text>
+            </View>
+            <View
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 8,
+                backgroundColor: statutColor(p.statut) + "22",
+                marginLeft: 8,
+              }}>
+              <Text
+                style={{
+                  color: statutColor(p.statut),
+                  fontSize: 11,
+                  fontWeight: "600",
+                }}>
+                {p.statut || "N/A"}
+              </Text>
+            </View>
+            <Text style={styles.arrow}> ›</Text>
+          </TouchableOpacity>
+        ))
+      )}
+    </ScrollView>
   );
 }
 
-const s = StyleSheet.create({
-  root:       { flex: 1, backgroundColor: '#F5F8FD' },
-  center:     { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  userBanner: { backgroundColor: '#0D2B6E', padding: 20, paddingTop: 50,
-                 flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  userName:   { fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  userRole:   { fontSize: 12, color: '#5BB8E8', marginTop: 2 },
-  userMat:    { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
-  notifBadge: { backgroundColor: '#E05A2B', borderRadius: 12, paddingHorizontal: 8,
-                 paddingVertical: 3, marginBottom: 6 },
-  notifBadgeTxt:{ color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  logoutBtn:  { backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 8,
-                 paddingHorizontal: 12, paddingVertical: 6 },
-  logoutTxt:  { color: '#fff', fontSize: 12 },
-  sectionTitle:{ fontSize: 14, fontWeight: '600', color: '#4A6080',
-                  padding: 16, paddingBottom: 10 },
-  card:       { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 10,
-                 borderWidth: 0.5, borderColor: '#E8EEF8',
-                 shadowColor: '#0D2B6E', shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
-  cardTop:    { flexDirection: 'row', justifyContent: 'space-between',
-                 alignItems: 'flex-start', marginBottom: 8 },
-  cardNom:    { fontSize: 15, fontWeight: '700', color: '#0D2B6E', flex: 1, marginRight: 8 },
-  badge:      { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeTxt:   { fontSize: 10, fontWeight: '700' },
-  cardMeta:   { flexDirection: 'row', justifyContent: 'space-between' },
-  metaTxt:    { fontSize: 12, color: '#8A9FBF' },
-  empty:      { textAlign: 'center', color: '#B0BDD0', marginTop: 40, fontSize: 14 },
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.accent,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  userName: { color: "#fff", fontWeight: "bold", fontSize: 15 },
+  userSub: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 1 },
+  logoutBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  logoutText: { color: "#fff", fontSize: 12 },
+
+  card: {
+    backgroundColor: COLORS.card,
+    margin: 16,
+    marginBottom: 0,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  cardTitle: { color: COLORS.text, fontWeight: "bold", fontSize: 15 },
+  seeAll: { color: COLORS.accent, fontSize: 13 },
+
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 8,
+  },
+  notifDate: { color: COLORS.muted, fontSize: 11, marginBottom: 2 },
+  notifMsg: { color: COLORS.text, fontSize: 13 },
+  notifBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notifCheck: { color: COLORS.success, fontWeight: "bold", fontSize: 16 },
+
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  sectionTitle: { color: COLORS.text, fontWeight: "bold", fontSize: 16 },
+  addBtn: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+
+  projetCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  projetNom: { color: COLORS.text, fontWeight: "bold", fontSize: 15 },
+  projetSub: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
+  statutBadge: (color) => ({
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    backgroundColor: color + "22",
+    marginLeft: 8,
+  }),
+  statutText: (color) => ({ color, fontSize: 11, fontWeight: "600" }),
+  arrow: { color: COLORS.muted, fontSize: 22, marginLeft: 4 },
+
+  emptyCard: {
+    margin: 16,
+    padding: 24,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  emptyText: { color: COLORS.muted, fontSize: 14 },
 });
