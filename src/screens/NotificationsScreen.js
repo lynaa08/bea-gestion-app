@@ -1,116 +1,285 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from "react";
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, ActivityIndicator
-} from 'react-native';
-import { getNotifications, markNotifRead, markAllNotifsRead } from '../api/api';
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  StyleSheet,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
+import { getNotifications, markNotifRead, markAllNotifsRead } from "../api/api";
 
-const TYPE_INFO = {
-  PROJET_CREE:      { icon: '🆕', color: '#EEF4FF' },
-  PROJET_MODIFIE:   { icon: '✏️', color: '#FFF4E0' },
-  PROBLEME_SIGNALE: { icon: '⚠️', color: '#FFF0F0' },
-  USER_CREE:        { icon: '👤', color: '#F0F8FF' },
+const COLORS = {
+  primary: "#0D2B6E",
+  accent: "#5BB8E8",
+  bg: "#F5F8FD",
+  card: "#fff",
+  border: "#E0EAF5",
+  text: "#1A2B4A",
+  muted: "#8A9FBF",
+  success: "#27AE60",
+  danger: "#E74C3C",
+  warning: "#F39C12",
 };
 
-function timeAgo(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const diff = Math.floor((Date.now() - d) / 1000);
-  if (diff < 60) return "À l'instant";
-  if (diff < 3600) return `Il y a ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `Il y a ${Math.floor(diff / 3600)} h`;
-  return d.toLocaleDateString('fr-FR');
-}
+const TYPE_ICONS = {
+  TACHE_ASSIGNEE: "📋",
+  PROJET_CREE: "📁",
+  PROJET_VALIDE: "✅",
+  PROBLEME_SIGNALE: "⚠️",
+  USER_CREE: "👤",
+};
+
+const TYPE_COLORS = {
+  TACHE_ASSIGNEE: COLORS.primary,
+  PROJET_CREE: COLORS.accent,
+  PROJET_VALIDE: COLORS.success,
+  PROBLEME_SIGNALE: COLORS.danger,
+  USER_CREE: COLORS.warning,
+};
 
 export default function NotificationsScreen() {
-  const [notifs, setNotifs]       = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [notifs, setNotifs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
+  const loadNotifs = useCallback(async () => {
     try {
       const data = await getNotifications();
       setNotifs(data);
-    } catch (e) {}
-    finally { setLoading(false); setRefreshing(false); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    loadNotifs();
+  }, [loadNotifs]);
 
-  async function handleRead(id) {
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadNotifs();
+  };
+
+  const markRead = async (id) => {
     await markNotifRead(id);
-    setNotifs(prev => prev.map(n => n.id === id ? { ...n, lue: true } : n));
-  }
+    setNotifs((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, lue: true } : n)),
+    );
+  };
 
-  async function handleReadAll() {
+  const dismiss = (id) => {
+    setNotifs((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const markAll = async () => {
     await markAllNotifsRead();
-    setNotifs(prev => prev.map(n => ({ ...n, lue: true })));
-  }
+    setNotifs((prev) => prev.map((n) => ({ ...n, lue: true })));
+  };
 
-  function renderItem({ item }) {
-    const info = TYPE_INFO[item.type] || { icon: '🔔', color: '#F4F7FC' };
+  const unreadCount = notifs.filter((n) => !n.lue).length;
+
+  if (loading) {
     return (
-      <TouchableOpacity
-        style={[s.item, !item.lue && s.itemUnread]}
-        onPress={() => handleRead(item.id)}>
-        <View style={[s.iconBox, { backgroundColor: info.color }]}>
-          <Text style={{ fontSize: 20 }}>{info.icon}</Text>
-        </View>
-        <View style={s.itemBody}>
-          <Text style={s.itemTitle}>{item.titre}</Text>
-          <Text style={s.itemMsg} numberOfLines={2}>{item.message}</Text>
-          <Text style={s.itemTime}>
-            {timeAgo(item.dateCreation)}{item.projetNom ? ` · ${item.projetNom}` : ''}
-          </Text>
-        </View>
-        {!item.lue && <View style={s.dot} />}
-      </TouchableOpacity>
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
     );
   }
 
-  if (loading) return (
-    <View style={s.center}><ActivityIndicator size="large" color="#0D2B6E" /></View>
-  );
-
   return (
-    <View style={s.root}>
-      <View style={s.header}>
-        <Text style={s.headerTitle}>Notifications</Text>
-        <TouchableOpacity onPress={handleReadAll}>
-          <Text style={s.markAll}>Tout marquer lu</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      {/* ── Barre "tout marquer" ── */}
+      {unreadCount > 0 && (
+        <View style={styles.topBar}>
+          <View style={styles.unreadBadge}>
+            <Text style={styles.unreadBadgeText}>{unreadCount}</Text>
+          </View>
+          <Text style={styles.topBarLabel}>non lue(s)</Text>
+          <TouchableOpacity style={styles.markAllBtn} onPress={markAll}>
+            <Text style={styles.markAllText}>✓ Tout marquer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Liste notifications ── */}
       <FlatList
         data={notifs}
-        keyExtractor={i => String(i.id)}
-        renderItem={renderItem}
-        refreshControl={<RefreshControl refreshing={refreshing}
-          onRefresh={() => { setRefreshing(true); load(); }} />}
-        ListEmptyComponent={
-          <Text style={s.empty}>🔔{'\n'}Aucune notification</Text>
+        keyExtractor={(n) => String(n.id)}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
+        contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
+        ListEmptyComponent={
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyIcon}>🔔</Text>
+            <Text style={styles.emptyTitle}>Aucune notification</Text>
+            <Text style={styles.emptyText}>Vous êtes à jour !</Text>
+          </View>
+        }
+        renderItem={({ item: n }) => {
+          const icon = TYPE_ICONS[n.type] || "🔔";
+          const typeColor = TYPE_COLORS[n.type] || COLORS.accent;
+          return (
+            <View
+              style={[
+                styles.notifCard,
+                !n.lue && {
+                  borderLeftColor: typeColor,
+                  backgroundColor: typeColor + "08",
+                },
+              ]}>
+              {/* Icône type */}
+              <View
+                style={[styles.iconBox, { backgroundColor: typeColor + "22" }]}>
+                <Text style={styles.iconText}>{icon}</Text>
+              </View>
+
+              {/* Contenu */}
+              <View style={{ flex: 1 }}>
+                {n.titre ? (
+                  <Text style={styles.notifTitre}>{n.titre}</Text>
+                ) : null}
+                <Text style={styles.notifMsg}>{n.message}</Text>
+                {n.projetNom ? (
+                  <Text style={styles.notifProjet}>📁 {n.projetNom}</Text>
+                ) : null}
+                <Text style={styles.notifDate}>
+                  {n.dateCreation
+                    ? new Date(n.dateCreation).toLocaleDateString("fr-FR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })
+                    : ""}
+                </Text>
+              </View>
+
+              {/* Boutons ✓ ✗ */}
+              <View style={styles.actions}>
+                {!n.lue && (
+                  <TouchableOpacity
+                    style={styles.btnOk}
+                    onPress={() => markRead(n.id)}>
+                    <Text style={styles.btnOkText}>✓</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.btnX}
+                  onPress={() => dismiss(n.id)}>
+                  <Text style={styles.btnXText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        }}
       />
     </View>
   );
 }
 
-const s = StyleSheet.create({
-  root:       { flex: 1, backgroundColor: '#F5F8FD' },
-  center:     { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                 backgroundColor: '#0D2B6E', padding: 16, paddingTop: 50 },
-  headerTitle:{ fontSize: 18, fontWeight: 'bold', color: '#fff' },
-  markAll:    { fontSize: 12, color: '#5BB8E8' },
-  item:       { flexDirection: 'row', backgroundColor: '#fff', padding: 14,
-                 borderBottomWidth: 0.5, borderBottomColor: '#F0F4FA', alignItems: 'flex-start' },
-  itemUnread: { backgroundColor: '#EEF6FF' },
-  iconBox:    { width: 44, height: 44, borderRadius: 10, justifyContent: 'center',
-                 alignItems: 'center', marginRight: 12, flexShrink: 0 },
-  itemBody:   { flex: 1 },
-  itemTitle:  { fontSize: 13, fontWeight: '700', color: '#0D2B6E', marginBottom: 2 },
-  itemMsg:    { fontSize: 12, color: '#6A80A0', marginBottom: 4 },
-  itemTime:   { fontSize: 10, color: '#B0BDD0' },
-  dot:        { width: 8, height: 8, borderRadius: 4, backgroundColor: '#5BB8E8',
-                 marginLeft: 8, marginTop: 4 },
-  empty:      { textAlign: 'center', color: '#B0BDD0', marginTop: 60, fontSize: 16, lineHeight: 30 },
+const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+    gap: 8,
+  },
+  unreadBadge: {
+    backgroundColor: COLORS.danger,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  unreadBadgeText: { color: "#fff", fontSize: 12, fontWeight: "bold" },
+  topBarLabel: { color: COLORS.muted, fontSize: 13, flex: 1 },
+  markAllBtn: {
+    backgroundColor: COLORS.primary + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  markAllText: { color: COLORS.primary, fontSize: 13, fontWeight: "600" },
+
+  notifCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.border,
+    gap: 12,
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  iconText: { fontSize: 18 },
+  notifTitre: {
+    color: COLORS.text,
+    fontWeight: "bold",
+    fontSize: 14,
+    marginBottom: 3,
+  },
+  notifMsg: { color: COLORS.text, fontSize: 13, lineHeight: 19 },
+  notifProjet: { color: COLORS.accent, fontSize: 12, marginTop: 4 },
+  notifDate: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
+
+  actions: { flexDirection: "column", gap: 6 },
+  btnOk: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  btnOkText: { color: COLORS.success, fontWeight: "bold", fontSize: 16 },
+  btnX: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#FEECEC",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  btnXText: { color: COLORS.danger, fontWeight: "bold", fontSize: 14 },
+
+  emptyCard: {
+    padding: 50,
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  emptyIcon: { fontSize: 48, marginBottom: 12 },
+  emptyTitle: {
+    color: COLORS.text,
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 6,
+  },
+  emptyText: { color: COLORS.muted, fontSize: 14 },
 });

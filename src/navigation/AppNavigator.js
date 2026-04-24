@@ -1,87 +1,189 @@
-import React from 'react';  
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { Text } from 'react-native';
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { NavigationContainer } from "@react-navigation/native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import { useAuth, ROLES, hasRole } from '../context/AuthContext';
+import { useAuth, ROLES, hasRole } from "../context/AuthContext";
+import {
+  startPolling,
+  stopPolling,
+  subscribeToNotifs,
+  getUnreadCount,
+} from "../services/NotificationService";
 
-import LoginScreen        from '../screens/LoginScreen';
-import DashboardScreen    from '../screens/DashboardScreen';
-import TachesScreen       from '../screens/TachesScreen';
-import ProjetDetailScreen from '../screens/ProjetDetailScreen';
-import NotificationsScreen from '../screens/NotificationsScreen';
-import ProblemeScreen     from '../screens/ProblemeScreen';
+import LoginScreen from "../screens/LoginScreen";
+import DashboardScreen from "../screens/DashboardScreen";
+import TachesScreen from "../screens/TachesScreen";
+import ProjetDetailScreen from "../screens/ProjetDetailScreen";
+import NotificationsScreen from "../screens/NotificationsScreen";
+import ProblemeScreen from "../screens/ProblemeScreen";
 
-const Tab   = createBottomTabNavigator();
+const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const COLORS = {
-  primary: '#0D2B6E',
-  active:  '#5BB8E8',
-  inactive:'#8A9FBF',
-  bg:      '#F5F8FD',
+  primary: "#0D2B6E",
+  active: "#5BB8E8",
+  inactive: "#8A9FBF",
 };
 
-function icon(name, focused) {
-  const icons = {
-    Dashboard:     focused ? '🏠' : '🏠',
-    Tâches:        focused ? '✅' : '☑️',
-    Notifications: focused ? '🔔' : '🔔',
-    Problèmes:     focused ? '⚠️' : '⚠️',
-  };
-  return <Text style={{ fontSize: 18 }}>{icons[name] || '●'}</Text>;
+// ── Badge rouge sur l'icône de l'onglet ──────────────────────────────────
+function TabIcon({ emoji, count, focused }) {
+  return (
+    <View style={ic.wrapper}>
+      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
+      {count > 0 && (
+        <View style={ic.badge}>
+          <Text style={ic.badgeText}>{count > 99 ? "99+" : count}</Text>
+        </View>
+      )}
+    </View>
+  );
 }
 
+const ic = StyleSheet.create({
+  wrapper: {
+    width: 30,
+    height: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    backgroundColor: "#E74C3C",
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 3,
+  },
+  badgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
+});
+
+// ── Tabs principaux ──────────────────────────────────────────────────────
 function MainTabs() {
   const { user } = useAuth();
   const isDev = hasRole(user, ROLES.DEV);
-  const isPMO = hasRole(user, ROLES.PMO, ROLES.ADMIN, ROLES.DIRECTEUR, ROLES.CHEF_DEPARTEMENT);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    // Charger le count initial
+    getUnreadCount().then(setUnreadCount);
+
+    // Démarrer le polling
+    startPolling();
+
+    // S'abonner aux nouvelles notifications
+    const unsubscribe = subscribeToNotifs((nouvelles) => {
+      setUnreadCount((prev) => prev + nouvelles.length);
+    });
+
+    return () => {
+      unsubscribe();
+      stopPolling();
+    };
+  }, []);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused }) => icon(route.name, focused),
         tabBarActiveTintColor: COLORS.active,
         tabBarInactiveTintColor: COLORS.inactive,
         tabBarStyle: {
-          backgroundColor: '#fff',
-          borderTopColor: '#E8EEF8',
+          backgroundColor: "#fff",
+          borderTopColor: "#E0EAF5",
           paddingBottom: 6,
-          height: 60,
+          height: 62,
         },
         headerStyle: { backgroundColor: COLORS.primary },
-        headerTintColor: '#fff',
-        headerTitleStyle: { fontWeight: 'bold' },
-      })}
-    >
-      <Tab.Screen name="Dashboard"    component={DashboardScreen} />
-      <Tab.Screen name="Tâches"       component={TachesScreen} />
-      <Tab.Screen name="Notifications" component={NotificationsScreen} />
-      {isDev && <Tab.Screen name="Problèmes" component={ProblemeScreen} />}
+        headerTintColor: "#fff",
+        headerTitleStyle: { fontWeight: "bold" },
+        tabBarLabel: () => null, // Pas de texte sous l'icône
+      })}>
+      <Tab.Screen
+        name="Accueil"
+        component={DashboardScreen}
+        options={{
+          title: "Accueil",
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="🏠" count={0} focused={focused} />
+          ),
+        }}
+      />
+
+      <Tab.Screen
+        name="Tâches"
+        component={TachesScreen}
+        options={{
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="✅" count={0} focused={focused} />
+          ),
+        }}
+      />
+
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          // ✅ Badge rouge avec le nombre de notifs non lues
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="🔔" count={unreadCount} focused={focused} />
+          ),
+        }}
+        listeners={{
+          tabPress: () => setUnreadCount(0), // reset badge quand on ouvre les notifs
+        }}
+      />
+
+      {isDev && (
+        <Tab.Screen
+          name="Problèmes"
+          component={ProblemeScreen}
+          options={{
+            tabBarIcon: ({ focused }) => (
+              <TabIcon emoji="⚠️" count={0} focused={focused} />
+            ),
+          }}
+        />
+      )}
     </Tab.Navigator>
   );
 }
 
+// ── Stack avec ProjetDetail ───────────────────────────────────────────────
 function AppStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Main"        component={MainTabs} />
-      <Stack.Screen name="ProjetDetail" component={ProjetDetailScreen}
-        options={{ headerShown: true, title: 'Détail projet',
+      <Stack.Screen name="Main" component={MainTabs} />
+      <Stack.Screen
+        name="ProjetDetail"
+        component={ProjetDetailScreen}
+        options={{
+          headerShown: true,
+          title: "Détail projet",
           headerStyle: { backgroundColor: COLORS.primary },
-          headerTintColor: '#fff' }} />
+          headerTintColor: "#fff",
+          headerTitleStyle: { fontWeight: "bold" },
+        }}
+      />
     </Stack.Navigator>
   );
 }
 
+// ── Navigateur principal ──────────────────────────────────────────────────
 export default function AppNavigator() {
   const { user, loading } = useAuth();
   if (loading) return null;
 
   return (
     <NavigationContainer>
-      {user ? <AppStack /> : (
+      {user ? (
+        <AppStack />
+      ) : (
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Login" component={LoginScreen} />
         </Stack.Navigator>
