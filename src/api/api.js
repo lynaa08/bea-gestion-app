@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // ⚠️  Remplacez par l'IP de votre PC (ipconfig → IPv4)
 // Exemple : http://localhost:8082/api
 // ✅ Remove "/users" from the base
-export const BASE_URL = "http://192.168.1.72:8081/api";
+export const BASE_URL = "http:// 192.168.1.13:8081/api";
 
 export async function getToken() {
   return await AsyncStorage.getItem("token");
