@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import NotificationBellIcon from "../components/NotificationBellIcon";
 import {
   View,
@@ -29,7 +30,6 @@ const COLORS = {
   danger: "#E74C3C",
   warning: "#F39C12",
 };
-
 
 const TYPE_COLORS = {
   TACHE_ASSIGNEE: COLORS.primary,
@@ -129,7 +129,7 @@ export default function NotificationsScreen() {
         contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
         ListEmptyComponent={
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>🔔</Text>
+            <MaterialIcons name="notifications" size={56} color="#C0D0E8" />
             <Text style={styles.emptyTitle}>Aucune notification</Text>
             <Text style={styles.emptyText}>
               Tirez vers le bas pour actualiser
@@ -137,7 +137,6 @@ export default function NotificationsScreen() {
           </View>
         }
         renderItem={({ item: n }) => {
-     
           const color = TYPE_COLORS[n.type] || COLORS.accent;
           return (
             <View
@@ -160,7 +159,10 @@ export default function NotificationsScreen() {
                 ) : null}
                 <Text style={styles.notifMsg}>{n.message}</Text>
                 {n.projetNom ? (
-                  <Text style={styles.notifProjet}>📁 {n.projetNom}</Text>
+                  <Text style={styles.notifProjet}>
+                    <MaterialIcons name="folder" size={12} color="#5BB8E8" />{" "}
+                    {n.projetNom}
+                  </Text>
                 ) : null}
                 <Text style={styles.notifDate}>
                   {n.dateCreation

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -236,7 +237,8 @@ export default function TacheDetailScreen({ route, navigation }) {
           {/* Assigné */}
           {tache.assigneNom ? (
             <Text style={styles.assigneText}>
-              👤 {tache.assignePrenom} {tache.assigneNom}
+              <MaterialIcons name="person" size={12} color="#8A9FBF" />{" "}
+              {tache.assignePrenom} {tache.assigneNom}
             </Text>
           ) : null}
 

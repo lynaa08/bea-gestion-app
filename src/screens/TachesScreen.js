@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -91,16 +92,17 @@ export default function TachesScreen({ navigation }) {
     loadTaches();
   };
 
-  // ── Date auto-format YYYY/MM/DD ──
+  // ── Date auto-format JJ/MM/AAAA (comme ProjetDetailScreen) ──
   const handleDateChange = (val) => {
-    // Strip non-digits
-    const digits = val.replace(/\D/g, "").substring(0, 8);
+    // Garder uniquement chiffres et /
+    const clean = val.replace(/[^\d/]/g, "");
+    const digits = clean.replace(/\//g, "").substring(0, 8);
     let formatted = digits;
+    if (digits.length > 2)
+      formatted = digits.slice(0, 2) + "/" + digits.slice(2);
     if (digits.length > 4)
-      formatted = digits.slice(0, 4) + "/" + digits.slice(4);
-    if (digits.length > 6)
       formatted =
-        digits.slice(0, 4) + "/" + digits.slice(4, 6) + "/" + digits.slice(6);
+        digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
     setForm((f) => ({ ...f, dateEcheance: formatted }));
   };
 
@@ -132,8 +134,13 @@ export default function TachesScreen({ navigation }) {
       Alert.alert("Erreur", "Sélectionnez un projet.");
       return;
     }
-    // Convert YYYY/MM/DD → YYYY-MM-DD for backend
-    const dateForBackend = form.dateEcheance.replace(/\//g, "-") || null;
+    // Convertir JJ/MM/AAAA → AAAA-MM-JJ pour le backend
+    let dateForBackend = null;
+    if (form.dateEcheance && form.dateEcheance.length === 10) {
+      const parts = form.dateEcheance.split("/");
+      if (parts.length === 3)
+        dateForBackend = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
     setCreating(true);
     try {
       await createTache({
@@ -219,7 +226,7 @@ export default function TachesScreen({ navigation }) {
         contentContainerStyle={{ padding: 12, paddingBottom: 30 }}
         ListEmptyComponent={
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <MaterialIcons name="assignment" size={56} color="#C0D0E8" />
             <Text style={styles.emptyTitle}>Aucune tâche</Text>
             <Text style={styles.emptyText}>
               {filtre === "Tous"
@@ -251,10 +258,14 @@ export default function TachesScreen({ navigation }) {
                   {t.titre}
                 </Text>
                 {t.projetNom ? (
-                  <Text style={styles.projetLabel}>📁 {t.projetNom}</Text>
+                  <Text style={styles.projetLabel}>
+                    <MaterialIcons name="folder" size={12} color="#5BB8E8" />{" "}
+                    {t.projetNom}
+                  </Text>
                 ) : null}
                 <Text style={styles.devName}>
-                  👤 {t.assignePrenom} {t.assigneNom || "Non assigné"}
+                  <MaterialIcons name="person" size={12} color="#8A9FBF" />{" "}
+                  {t.assignePrenom} {t.assigneNom || "Non assigné"}
                 </Text>
                 {/* Deadline colorée */}
                 {t.dateEcheance ? (
@@ -344,16 +355,15 @@ export default function TachesScreen({ navigation }) {
               <Text style={styles.lbl}>Date d'échéance</Text>
               <TextInput
                 style={styles.inp}
-                placeholder="YYYY/MM/DD"
+                placeholder="JJ/MM/AAAA  ex: 30/06/2026"
                 value={form.dateEcheance}
                 onChangeText={handleDateChange}
-                keyboardType="number-pad"
+                keyboardType="default"
                 maxLength={10}
               />
               <Text
                 style={{ color: COLORS.muted, fontSize: 11, marginBottom: 8 }}>
-                Tapez les chiffres — le format YYYY/MM/DD s'ajoute
-                automatiquement
+                Format : JJ/MM/AAAA — les / s'ajoutent automatiquement
               </Text>
 
               <Text style={styles.lbl}>Projet *</Text>

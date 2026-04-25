@@ -3,13 +3,14 @@ import { View, Text, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
- 
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+
 import { useAuth, ROLES, hasRole } from "../context/AuthContext";
 import {
   startNotifPolling,
   stopNotifPolling,
 } from "../services/NotificationService";
- 
+
 import LoginScreen from "../screens/LoginScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import TachesScreen from "../screens/TachesScreen";
@@ -18,15 +19,17 @@ import ProjetDetailScreen from "../screens/ProjetDetailScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ProblemeScreen from "../screens/ProblemeScreen";
 import SettingsScreen from "../screens/SettingsScreen"; // ← NOUVEAU
- 
+
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const COLORS = { primary: "#0D2B6E", active: "#5BB8E8", inactive: "#8A9FBF" };
 
-function TabIcon({ emoji, count, focused }) {
+function TabIcon({ iconLib, iconName, count, focused, color }) {
+  const iconColor = focused ? COLORS.active : COLORS.inactive;
+  const Icon = iconLib === "material" ? MaterialIcons : Ionicons;
   return (
     <View style={ic.wrapper}>
-      <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{emoji}</Text>
+      <Icon name={iconName} size={24} color={color || iconColor} />
       {count > 0 && (
         <View style={ic.badge}>
           <Text style={ic.badgeText}>{count > 99 ? "99+" : count}</Text>
@@ -35,7 +38,7 @@ function TabIcon({ emoji, count, focused }) {
     </View>
   );
 }
- 
+
 const ic = StyleSheet.create({
   wrapper: {
     width: 30,
@@ -62,16 +65,15 @@ function MainTabs() {
   const { user } = useAuth();
   const isDev = hasRole(user, ROLES.DEV);
   const [unreadCount, setUnreadCount] = useState(0);
- 
+
   useEffect(() => {
     startNotifPolling();
-   
+
     return () => {
-      
       stopNotifPolling();
     };
   }, []);
- 
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -94,56 +96,80 @@ function MainTabs() {
         options={{
           title: "Accueil",
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🏠" count={0} focused={focused} />
+            <TabIcon
+              iconLib="ionicons"
+              iconName="home"
+              count={0}
+              focused={focused}
+            />
           ),
         }}
       />
- 
+
       <Tab.Screen
         name="Tâches"
         component={TachesScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="✅" count={0} focused={focused} />
+            <TabIcon
+              iconLib="material"
+              iconName="check-circle"
+              count={0}
+              focused={focused}
+            />
           ),
         }}
       />
- 
+
       <Tab.Screen
         name="Notifications"
         component={NotificationsScreen}
         options={{
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="🔔" count={unreadCount} focused={focused} />
+            <TabIcon
+              iconLib="ionicons"
+              iconName="notifications"
+              count={unreadCount}
+              focused={focused}
+            />
           ),
         }}
         listeners={{ tabPress: () => setUnreadCount(0) }}
       />
- 
+
       {isDev && (
         <Tab.Screen
           name="Problèmes"
           component={ProblemeScreen}
           options={{
             tabBarIcon: ({ focused }) => (
-              <TabIcon emoji="⚠️" count={0} focused={focused} />
+              <TabIcon
+                iconLib="material"
+                iconName="warning"
+                count={0}
+                focused={focused}
+              />
             ),
           }}
         />
       )}
- 
-      {/* ── Paramètres ── NOUVEAU */}
+
+      {/* ── Paramètres ── */}
       <Tab.Screen
         name="Paramètres"
         component={SettingsScreen}
         options={{
           headerShown: false,
           tabBarIcon: ({ focused }) => (
-            <TabIcon emoji="⚙️" count={0} focused={focused} />
+            <TabIcon
+              iconLib="ionicons"
+              iconName="settings"
+              count={0}
+              focused={focused}
+            />
           ),
         }}
       />
- 
     </Tab.Navigator>
   );
 }
@@ -176,7 +202,7 @@ function AppStack() {
 export default function AppNavigator() {
   const { user, loading } = useAuth();
   if (loading) return null;
- 
+
   return (
     <NavigationContainer>
       {user ? (

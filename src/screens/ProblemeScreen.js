@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -94,7 +95,7 @@ export default function ProblemeScreen() {
         contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyIcon}>⚠️</Text>
+            <MaterialIcons name="warning" size={56} color="#C0D0E8" />
             <Text style={styles.emptyText}>Aucun problème déclaré</Text>
           </View>
         }
@@ -120,7 +121,10 @@ export default function ProblemeScreen() {
                 </Text>
               )}
               {p.projetNom && (
-                <Text style={styles.problemProjet}>📁 {p.projetNom}</Text>
+                <Text style={styles.problemProjet}>
+                  <MaterialIcons name="folder" size={12} color="#5BB8E8" />{" "}
+                  {p.projetNom}
+                </Text>
               )}
               <View
                 style={[

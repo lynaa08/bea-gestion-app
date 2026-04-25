@@ -6,18 +6,20 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/images/logo.png",
-    "resizeMode": "contain",
-    "backgroundColor": "#0D2B6E",
+    "splash": {
+      "image": "./assets/images/logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
     "android": {
-      "package": "com.anonymous.beatasks"
-    }
-  },
-  "ios": {
-    "supportsTablet": false
-  },
-  "android": {
-    "adaptiveIcon": {
-      "backgroundColor": "#0D2B6E"
+      "package": "com.anonymous.beatasks",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo.png",
+        "backgroundColor": "#ffffff"
+      }
     }
   }
 }

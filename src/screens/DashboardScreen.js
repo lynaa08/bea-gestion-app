@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -105,7 +106,7 @@ export default function DashboardScreen({ navigation }) {
       {notifs.length > 0 && (
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>🔔 Notifications</Text>
+            <Text style={styles.cardTitle}>Notifications</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate("Notifications")}>
               <Text style={styles.seeAll}>Voir tout</Text>
