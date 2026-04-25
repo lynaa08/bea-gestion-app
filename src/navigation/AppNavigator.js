@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
+ 
 import { useAuth, ROLES, hasRole } from "../context/AuthContext";
 import {
   startPolling,
@@ -11,23 +11,24 @@ import {
   subscribeToNotifs,
   getUnreadCount,
 } from "../services/NotificationService";
-
+ 
 import LoginScreen from "../screens/LoginScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import TachesScreen from "../screens/TachesScreen";
 import ProjetDetailScreen from "../screens/ProjetDetailScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ProblemeScreen from "../screens/ProblemeScreen";
-
+import SettingsScreen from "../screens/SettingsScreen"; // ← NOUVEAU
+ 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
-
+ 
 const COLORS = {
   primary: "#0D2B6E",
   active: "#5BB8E8",
   inactive: "#8A9FBF",
 };
-
+ 
 // ── Badge rouge sur l'icône de l'onglet ──────────────────────────────────
 function TabIcon({ emoji, count, focused }) {
   return (
@@ -41,7 +42,7 @@ function TabIcon({ emoji, count, focused }) {
     </View>
   );
 }
-
+ 
 const ic = StyleSheet.create({
   wrapper: {
     width: 30,
@@ -63,31 +64,25 @@ const ic = StyleSheet.create({
   },
   badgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
 });
-
+ 
 // ── Tabs principaux ──────────────────────────────────────────────────────
 function MainTabs() {
   const { user } = useAuth();
   const isDev = hasRole(user, ROLES.DEV);
   const [unreadCount, setUnreadCount] = useState(0);
-
+ 
   useEffect(() => {
-    // Charger le count initial
     getUnreadCount().then(setUnreadCount);
-
-    // Démarrer le polling
     startPolling();
-
-    // S'abonner aux nouvelles notifications
     const unsubscribe = subscribeToNotifs((nouvelles) => {
       setUnreadCount((prev) => prev + nouvelles.length);
     });
-
     return () => {
       unsubscribe();
       stopPolling();
     };
   }, []);
-
+ 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -102,8 +97,9 @@ function MainTabs() {
         headerStyle: { backgroundColor: COLORS.primary },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "bold" },
-        tabBarLabel: () => null, // Pas de texte sous l'icône
+        tabBarLabel: () => null,
       })}>
+ 
       <Tab.Screen
         name="Accueil"
         component={DashboardScreen}
@@ -114,7 +110,7 @@ function MainTabs() {
           ),
         }}
       />
-
+ 
       <Tab.Screen
         name="Tâches"
         component={TachesScreen}
@@ -124,21 +120,20 @@ function MainTabs() {
           ),
         }}
       />
-
+ 
       <Tab.Screen
         name="Notifications"
         component={NotificationsScreen}
         options={{
-          // ✅ Badge rouge avec le nombre de notifs non lues
           tabBarIcon: ({ focused }) => (
             <TabIcon emoji="🔔" count={unreadCount} focused={focused} />
           ),
         }}
         listeners={{
-          tabPress: () => setUnreadCount(0), // reset badge quand on ouvre les notifs
+          tabPress: () => setUnreadCount(0),
         }}
       />
-
+ 
       {isDev && (
         <Tab.Screen
           name="Problèmes"
@@ -150,10 +145,23 @@ function MainTabs() {
           }}
         />
       )}
+ 
+      {/* ── Paramètres ── NOUVEAU */}
+      <Tab.Screen
+        name="Paramètres"
+        component={SettingsScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="⚙️" count={0} focused={focused} />
+          ),
+        }}
+      />
+ 
     </Tab.Navigator>
   );
 }
-
+ 
 // ── Stack avec ProjetDetail ───────────────────────────────────────────────
 function AppStack() {
   return (
@@ -173,12 +181,12 @@ function AppStack() {
     </Stack.Navigator>
   );
 }
-
+ 
 // ── Navigateur principal ──────────────────────────────────────────────────
 export default function AppNavigator() {
   const { user, loading } = useAuth();
   if (loading) return null;
-
+ 
   return (
     <NavigationContainer>
       {user ? (
