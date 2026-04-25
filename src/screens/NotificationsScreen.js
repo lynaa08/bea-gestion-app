@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
+import NotificationBellIcon from "../components/NotificationBellIcon";
 import {
   View,
   Text,
@@ -29,13 +30,7 @@ const COLORS = {
   warning: "#F39C12",
 };
 
-const TYPE_ICONS = {
-  TACHE_ASSIGNEE: "📋",
-  TACHE_TERMINEE: "✅",
-  PROJET_CREE: "📁",
-  PROJET_VALIDE: "✅",
-  PROBLEME_SIGNALE: "⚠️",
-};
+
 const TYPE_COLORS = {
   TACHE_ASSIGNEE: COLORS.primary,
   TACHE_TERMINEE: COLORS.success,
@@ -142,7 +137,7 @@ export default function NotificationsScreen() {
           </View>
         }
         renderItem={({ item: n }) => {
-          const icon = TYPE_ICONS[n.type] || "🔔";
+     
           const color = TYPE_COLORS[n.type] || COLORS.accent;
           return (
             <View
@@ -155,7 +150,7 @@ export default function NotificationsScreen() {
               ]}>
               {/* Icône */}
               <View style={[styles.iconBox, { backgroundColor: color + "22" }]}>
-                <Text style={styles.iconText}>{icon}</Text>
+                <NotificationBellIcon size={18} color={color} />
               </View>
 
               {/* Contenu */}

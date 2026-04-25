@@ -4,19 +4,20 @@
     "slug": "bea-tasks",
     "version": "1.0.0",
     "orientation": "portrait",
-
     "userInterfaceStyle": "light",
-    "splash": {
     "icon": "./assets/images/logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0D2B6E"
-    },
-    "ios": { "supportsTablet": false },
+    "resizeMode": "contain",
+    "backgroundColor": "#0D2B6E",
     "android": {
-      "adaptiveIcon": {
-        
-        "backgroundColor": "#0D2B6E"
-      }
+      "package": "com.anonymous.beatasks"
+    }
+  },
+  "ios": {
+    "supportsTablet": false
+  },
+  "android": {
+    "adaptiveIcon": {
+      "backgroundColor": "#0D2B6E"
     }
   }
 }

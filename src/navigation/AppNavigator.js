@@ -67,7 +67,7 @@ function MainTabs() {
     startNotifPolling();
    
     return () => {
-      unsub();
+      
       stopNotifPolling();
     };
   }, []);
