@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { sendLocalNotification } from "../services/NotificationService";
 import {
   View,
   Text,
@@ -10,14 +9,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  FlatList,
 } from "react-native";
-import {
-  useAuth,
-  canCreateTache,
-  ROLES,
-  hasRole,
-} from "../context/AuthContext";
+import { useAuth, canCreateTache } from "../context/AuthContext";
 import {
   getProjet,
   getTachesProjet,
@@ -46,7 +39,20 @@ const STATUT_TACHE = {
   BLOQUEE: { label: "Bloquée", color: COLORS.danger },
 };
 
-export default function ProjetDetailScreen({ route }) {
+// ✅ Convertit JJ/MM/AAAA ou JJ-MM-AAAA → AAAA-MM-JJ (ISO requis par Spring Boot)
+function toISO(str) {
+  if (!str || !str.trim()) return null;
+  const clean = str.trim().replace(/\//g, "-"); // accepte / ou -
+  const parts = clean.split("-");
+  if (parts.length !== 3) return null;
+  const [a, b, c] = parts;
+  // Si déjà en AAAA-MM-JJ
+  if (a.length === 4) return `${a}-${b.padStart(2, "0")}-${c.padStart(2, "0")}`;
+  // Sinon JJ-MM-AAAA → AAAA-MM-JJ
+  return `${c}-${b.padStart(2, "0")}-${a.padStart(2, "0")}`;
+}
+
+export default function ProjetDetailScreen({ route, navigation }) {
   const { projetId } = route.params;
   const { user } = useAuth();
   const [projet, setProjet] = useState(null);
@@ -55,10 +61,9 @@ export default function ProjetDetailScreen({ route }) {
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
-  // Form nouvelle tâche
   const [formTitre, setFormTitre] = useState("");
   const [formDesc, setFormDesc] = useState("");
-  const [formDev, setFormDev] = useState(null); // { matricule, nom, prenom }
+  const [formDev, setFormDev] = useState(null);
   const [formDate, setFormDate] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -90,6 +95,17 @@ export default function ProjetDetailScreen({ route }) {
       Alert.alert("Titre requis", "Veuillez saisir le titre de la tâche.");
       return;
     }
+
+    // ✅ Convertir la date avant d'envoyer au backend
+    const dateISO = toISO(formDate);
+    if (formDate.trim() && !dateISO) {
+      Alert.alert(
+        "Date invalide",
+        "Format attendu : JJ/MM/AAAA\nExemple : 30/06/2026",
+      );
+      return;
+    }
+
     setSaving(true);
     try {
       await createTache({
@@ -97,18 +113,15 @@ export default function ProjetDetailScreen({ route }) {
         description: formDesc.trim(),
         projetId,
         assigneMatricule: formDev?.matricule || null,
-        dateEcheance: formDate || null,
+        dateEcheance: dateISO, // ✅ toujours en AAAA-MM-JJ
       });
-      await sendLocalNotification(
-        "✅ Tâche créée",
-        `"${formTitre}" a été ajoutée au projet.`,
-      );
       setFormTitre("");
       setFormDesc("");
       setFormDev(null);
       setFormDate("");
       setModalVisible(false);
-      await loadData(); // Recharger les tâches
+      Alert.alert("✅ Tâche créée", `"${formTitre}" a été ajoutée au projet.`);
+      await loadData();
     } catch (e) {
       Alert.alert("Erreur", e.message);
     } finally {
@@ -123,7 +136,7 @@ export default function ProjetDetailScreen({ route }) {
       setTaches((prev) =>
         prev.map((t) => (t.id === tache.id ? { ...t, statut: newStatut } : t)),
       );
-    } catch (e) {}
+    } catch {}
   };
 
   if (loading) {
@@ -135,8 +148,7 @@ export default function ProjetDetailScreen({ route }) {
   }
 
   if (!projet) return null;
-
-  const peutCreerTache = canCreateTache(user);
+  const peutCreer = canCreateTache(user);
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
@@ -179,7 +191,7 @@ export default function ProjetDetailScreen({ route }) {
                     {(m.prenom?.[0] || "") + (m.nom?.[0] || "")}
                   </Text>
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.membreNom}>
                     {m.prenom} {m.nom}
                   </Text>
@@ -193,7 +205,7 @@ export default function ProjetDetailScreen({ route }) {
           </View>
         )}
 
-        {/* ── Tâches : grille 2 colonnes ── */}
+        {/* ── Tâches ── */}
         <View style={styles.tachesHeader}>
           <Text style={styles.sectionTitle}>📋 Tâches ({taches.length})</Text>
         </View>
@@ -208,10 +220,13 @@ export default function ProjetDetailScreen({ route }) {
               const st = STATUT_TACHE[t.statut] || STATUT_TACHE.A_FAIRE;
               const isDone = t.statut === "TERMINEE";
               return (
+                // ✅ Tap → TacheDetail
                 <TouchableOpacity
                   key={t.id}
                   style={[styles.tacheCard, isDone && styles.tacheCardDone]}
-                  onPress={() => handleToggleStatut(t)}
+                  onPress={() =>
+                    navigation.navigate("TacheDetail", { tacheId: t.id })
+                  }
                   activeOpacity={0.8}>
                   <View
                     style={[
@@ -242,8 +257,8 @@ export default function ProjetDetailScreen({ route }) {
         )}
       </ScrollView>
 
-      {/* ── FAB bouton + (si autorisé) ── */}
-      {peutCreerTache && (
+      {/* ── FAB + ── */}
+      {peutCreer && (
         <TouchableOpacity
           style={styles.fab}
           onPress={() => setModalVisible(true)}
@@ -260,20 +275,24 @@ export default function ProjetDetailScreen({ route }) {
         onRequestClose={() => setModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
+            {/* Handle */}
+            <View style={styles.handle} />
             <Text style={styles.modalTitle}>Nouvelle tâche</Text>
 
             <Text style={styles.inputLabel}>Titre *</Text>
             <TextInput
               style={styles.input}
               placeholder="Titre de la tâche"
+              placeholderTextColor={COLORS.muted}
               value={formTitre}
               onChangeText={setFormTitre}
             />
 
             <Text style={styles.inputLabel}>Description</Text>
             <TextInput
-              style={[styles.input, { height: 80, textAlignVertical: "top" }]}
+              style={[styles.input, { height: 70, textAlignVertical: "top" }]}
               placeholder="Description (optionnel)"
+              placeholderTextColor={COLORS.muted}
               value={formDesc}
               onChangeText={setFormDesc}
               multiline
@@ -292,7 +311,9 @@ export default function ProjetDetailScreen({ route }) {
                     formDev?.matricule === d.matricule &&
                       styles.devChipSelected,
                   ]}
-                  onPress={() => setFormDev(d)}>
+                  onPress={() =>
+                    setFormDev(formDev?.matricule === d.matricule ? null : d)
+                  }>
                   <Text
                     style={[
                       styles.devChipText,
@@ -304,10 +325,12 @@ export default function ProjetDetailScreen({ route }) {
               ))}
             </ScrollView>
 
-            <Text style={styles.inputLabel}>Date d'échéance (JJ-MM-AAAA)</Text>
+            {/* ✅ Date avec format JJ/MM/AAAA clairement indiqué */}
+            <Text style={styles.inputLabel}>Date d'échéance</Text>
             <TextInput
               style={styles.input}
-              placeholder="ex: 30-06-2026"
+              placeholder="JJ/MM/AAAA  ex: 30/06/2026"
+              placeholderTextColor={COLORS.muted}
               value={formDate}
               onChangeText={setFormDate}
               keyboardType="numeric"
@@ -316,7 +339,13 @@ export default function ProjetDetailScreen({ route }) {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.btnCancel}
-                onPress={() => setModalVisible(false)}>
+                onPress={() => {
+                  setModalVisible(false);
+                  setFormTitre("");
+                  setFormDesc("");
+                  setFormDev(null);
+                  setFormDate("");
+                }}>
                 <Text style={styles.btnCancelText}>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -349,7 +378,6 @@ function Row({ label, value }) {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
   nomBox: {
     backgroundColor: COLORS.primary,
     padding: 20,
@@ -360,7 +388,6 @@ const styles = StyleSheet.create({
   nomProjet: { color: "#fff", fontSize: 20, fontWeight: "bold", flex: 1 },
   statutBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   statutText: { fontSize: 12, fontWeight: "600" },
-
   card: {
     backgroundColor: COLORS.card,
     margin: 12,
@@ -378,9 +405,7 @@ const styles = StyleSheet.create({
   label: { color: COLORS.muted, fontSize: 13 },
   value: { color: COLORS.text, fontSize: 13, fontWeight: "600" },
   desc: { color: COLORS.text, fontSize: 14, lineHeight: 20, marginTop: 4 },
-
   sectionTitle: { color: COLORS.text, fontWeight: "bold", fontSize: 15 },
-
   membreRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -401,14 +426,12 @@ const styles = StyleSheet.create({
   membreNom: { color: COLORS.text, fontWeight: "600", fontSize: 14 },
   membreMat: { color: COLORS.muted, fontSize: 12 },
   roleChip: {
-    marginLeft: "auto",
     backgroundColor: COLORS.primary + "22",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
   },
   roleText: { color: COLORS.primary, fontSize: 11, fontWeight: "600" },
-
   tachesHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -417,12 +440,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
   },
-  tachesGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 8,
-    gap: 0,
-  },
+  tachesGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 8 },
   tacheCard: {
     width: "47%",
     backgroundColor: COLORS.card,
@@ -432,16 +450,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.border,
   },
-  tacheCardDone: { opacity: 0.6, borderStyle: "dashed" },
+  tacheCardDone: { opacity: 0.6 },
   tacheStatutDot: { width: 8, height: 8, borderRadius: 4, marginBottom: 6 },
   tacheTitre: {
     color: COLORS.text,
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 13,
     marginBottom: 4,
   },
   tacheDoneText: { textDecorationLine: "line-through", color: COLORS.muted },
-  tacheDev: { color: COLORS.muted, fontSize: 12, marginBottom: 8 },
+  tacheDev: { color: COLORS.muted, fontSize: 12, marginBottom: 6 },
   tacheBadge: {
     alignSelf: "flex-start",
     paddingHorizontal: 6,
@@ -449,7 +467,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   tacheBadgeText: { fontSize: 11, fontWeight: "600" },
-
   emptyCard: {
     margin: 12,
     padding: 24,
@@ -460,14 +477,13 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
   },
   emptyText: { color: COLORS.muted, fontSize: 14 },
-
   fab: {
     position: "absolute",
     bottom: 24,
     right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
@@ -477,8 +493,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  fabText: { color: "#fff", fontSize: 32, lineHeight: 36, fontWeight: "300" },
-
+  fabText: { color: "#fff", fontSize: 34, lineHeight: 38, fontWeight: "300" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -486,36 +501,44 @@ const styles = StyleSheet.create({
   },
   modalBox: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: 40,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
+    alignSelf: "center",
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "bold",
     color: COLORS.text,
-    marginBottom: 16,
+    marginBottom: 4,
     textAlign: "center",
   },
   inputLabel: {
     color: COLORS.muted,
     fontSize: 13,
     marginBottom: 4,
-    marginTop: 10,
+    marginTop: 12,
   },
   input: {
     borderWidth: 1,
     borderColor: COLORS.border,
     borderRadius: 10,
-    padding: 10,
+    padding: 12,
     fontSize: 14,
     color: COLORS.text,
     backgroundColor: COLORS.bg,
   },
-  devList: { marginVertical: 4, maxHeight: 50 },
+  devList: { marginVertical: 4, maxHeight: 48 },
   devChip: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,

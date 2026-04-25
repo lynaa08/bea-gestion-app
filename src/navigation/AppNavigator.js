@@ -6,29 +6,22 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import { useAuth, ROLES, hasRole } from "../context/AuthContext";
 import {
-  startPolling,
-  stopPolling,
-  subscribeToNotifs,
-  getUnreadCount,
+  startNotifPolling,
+  stopNotifPolling,
 } from "../services/NotificationService";
 
 import LoginScreen from "../screens/LoginScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import TachesScreen from "../screens/TachesScreen";
+import TacheDetailScreen from "../screens/TacheDetailScreen"; // ✅ nouveau
 import ProjetDetailScreen from "../screens/ProjetDetailScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ProblemeScreen from "../screens/ProblemeScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const COLORS = { primary: "#0D2B6E", active: "#5BB8E8", inactive: "#8A9FBF" };
 
-const COLORS = {
-  primary: "#0D2B6E",
-  active: "#5BB8E8",
-  inactive: "#8A9FBF",
-};
-
-// ── Badge rouge sur l'icône de l'onglet ──────────────────────────────────
 function TabIcon({ emoji, count, focused }) {
   return (
     <View style={ic.wrapper}>
@@ -64,46 +57,36 @@ const ic = StyleSheet.create({
   badgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
 });
 
-// ── Tabs principaux ──────────────────────────────────────────────────────
 function MainTabs() {
   const { user } = useAuth();
   const isDev = hasRole(user, ROLES.DEV);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // Charger le count initial
-    getUnreadCount().then(setUnreadCount);
-
-    // Démarrer le polling
-    startPolling();
-
-    // S'abonner aux nouvelles notifications
-    const unsubscribe = subscribeToNotifs((nouvelles) => {
-      setUnreadCount((prev) => prev + nouvelles.length);
-    });
-
+    startNotifPolling();
+   
     return () => {
-      unsubscribe();
-      stopPolling();
+      unsub();
+      stopNotifPolling();
     };
   }, []);
 
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={{
         tabBarActiveTintColor: COLORS.active,
         tabBarInactiveTintColor: COLORS.inactive,
         tabBarStyle: {
           backgroundColor: "#fff",
           borderTopColor: "#E0EAF5",
-          paddingBottom: 6,
           height: 62,
+          paddingBottom: 6,
         },
         headerStyle: { backgroundColor: COLORS.primary },
         headerTintColor: "#fff",
         headerTitleStyle: { fontWeight: "bold" },
-        tabBarLabel: () => null, // Pas de texte sous l'icône
-      })}>
+        tabBarLabel: () => null,
+      }}>
       <Tab.Screen
         name="Accueil"
         component={DashboardScreen}
@@ -129,14 +112,11 @@ function MainTabs() {
         name="Notifications"
         component={NotificationsScreen}
         options={{
-          // ✅ Badge rouge avec le nombre de notifs non lues
           tabBarIcon: ({ focused }) => (
             <TabIcon emoji="🔔" count={unreadCount} focused={focused} />
           ),
         }}
-        listeners={{
-          tabPress: () => setUnreadCount(0), // reset badge quand on ouvre les notifs
-        }}
+        listeners={{ tabPress: () => setUnreadCount(0) }}
       />
 
       {isDev && (
@@ -154,27 +134,31 @@ function MainTabs() {
   );
 }
 
-// ── Stack avec ProjetDetail ───────────────────────────────────────────────
 function AppStack() {
+  const HEADER = {
+    headerShown: true,
+    headerStyle: { backgroundColor: COLORS.primary },
+    headerTintColor: "#fff",
+    headerTitleStyle: { fontWeight: "bold" },
+  };
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={MainTabs} />
       <Stack.Screen
         name="ProjetDetail"
         component={ProjetDetailScreen}
-        options={{
-          headerShown: true,
-          title: "Détail projet",
-          headerStyle: { backgroundColor: COLORS.primary },
-          headerTintColor: "#fff",
-          headerTitleStyle: { fontWeight: "bold" },
-        }}
+        options={{ ...HEADER, title: "Détail projet" }}
+      />
+      {/* ✅ Nouvelle route TacheDetail */}
+      <Stack.Screen
+        name="TacheDetail"
+        component={TacheDetailScreen}
+        options={{ ...HEADER, title: "Détail tâche" }}
       />
     </Stack.Navigator>
   );
 }
 
-// ── Navigateur principal ──────────────────────────────────────────────────
 export default function AppNavigator() {
   const { user, loading } = useAuth();
   if (loading) return null;

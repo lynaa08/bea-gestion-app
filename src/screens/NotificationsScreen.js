@@ -8,7 +8,13 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-import { getNotifications, markNotifRead, markAllNotifsRead } from "../api/api";
+import {
+  getNotifications,
+  markNotifRead,
+  markAllNotifsRead,
+  deleteNotification,
+} from "../api/api";
+import { refreshNow } from "../services/NotificationService";
 
 const COLORS = {
   primary: "#0D2B6E",
@@ -25,18 +31,17 @@ const COLORS = {
 
 const TYPE_ICONS = {
   TACHE_ASSIGNEE: "📋",
+  TACHE_TERMINEE: "✅",
   PROJET_CREE: "📁",
   PROJET_VALIDE: "✅",
   PROBLEME_SIGNALE: "⚠️",
-  USER_CREE: "👤",
 };
-
 const TYPE_COLORS = {
   TACHE_ASSIGNEE: COLORS.primary,
+  TACHE_TERMINEE: COLORS.success,
   PROJET_CREE: COLORS.accent,
   PROJET_VALIDE: COLORS.success,
   PROBLEME_SIGNALE: COLORS.danger,
-  USER_CREE: COLORS.warning,
 };
 
 export default function NotificationsScreen() {
@@ -47,7 +52,7 @@ export default function NotificationsScreen() {
   const loadNotifs = useCallback(async () => {
     try {
       const data = await getNotifications();
-      setNotifs(data);
+      setNotifs(Array.isArray(data) ? data : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -60,9 +65,11 @@ export default function NotificationsScreen() {
     loadNotifs();
   }, [loadNotifs]);
 
-  const onRefresh = () => {
+  // ✅ Pull-to-refresh : recharge les notifs ET force le poll
+  const onRefresh = async () => {
     setRefreshing(true);
-    loadNotifs();
+    await refreshNow(); // force le polling immédiatement
+    await loadNotifs(); // recharge l'écran
   };
 
   const markRead = async (id) => {
@@ -72,8 +79,15 @@ export default function NotificationsScreen() {
     );
   };
 
-  const dismiss = (id) => {
+  const dismiss = async (id) => {
+    // Remove from local state immediately (optimistic)
     setNotifs((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await deleteNotification(id);
+    } catch (e) {
+      // If delete fails, reload from server
+      loadNotifs();
+    }
   };
 
   const markAll = async () => {
@@ -106,36 +120,41 @@ export default function NotificationsScreen() {
         </View>
       )}
 
-      {/* ── Liste notifications ── */}
       <FlatList
         data={notifs}
         keyExtractor={(n) => String(n.id)}
+        // ✅ Pull-to-refresh corrigé
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+          />
         }
         contentContainerStyle={{ padding: 12, paddingBottom: 40 }}
         ListEmptyComponent={
           <View style={styles.emptyCard}>
             <Text style={styles.emptyIcon}>🔔</Text>
             <Text style={styles.emptyTitle}>Aucune notification</Text>
-            <Text style={styles.emptyText}>Vous êtes à jour !</Text>
+            <Text style={styles.emptyText}>
+              Tirez vers le bas pour actualiser
+            </Text>
           </View>
         }
         renderItem={({ item: n }) => {
           const icon = TYPE_ICONS[n.type] || "🔔";
-          const typeColor = TYPE_COLORS[n.type] || COLORS.accent;
+          const color = TYPE_COLORS[n.type] || COLORS.accent;
           return (
             <View
               style={[
                 styles.notifCard,
                 !n.lue && {
-                  borderLeftColor: typeColor,
-                  backgroundColor: typeColor + "08",
+                  borderLeftColor: color,
+                  backgroundColor: color + "08",
                 },
               ]}>
-              {/* Icône type */}
-              <View
-                style={[styles.iconBox, { backgroundColor: typeColor + "22" }]}>
+              {/* Icône */}
+              <View style={[styles.iconBox, { backgroundColor: color + "22" }]}>
                 <Text style={styles.iconText}>{icon}</Text>
               </View>
 
@@ -186,7 +205,6 @@ export default function NotificationsScreen() {
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
   topBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -214,7 +232,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   markAllText: { color: COLORS.primary, fontSize: 13, fontWeight: "600" },
-
   notifCard: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -245,7 +262,6 @@ const styles = StyleSheet.create({
   notifMsg: { color: COLORS.text, fontSize: 13, lineHeight: 19 },
   notifProjet: { color: COLORS.accent, fontSize: 12, marginTop: 4 },
   notifDate: { color: COLORS.muted, fontSize: 11, marginTop: 4 },
-
   actions: { flexDirection: "column", gap: 6 },
   btnOk: {
     width: 34,
@@ -265,7 +281,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnXText: { color: COLORS.danger, fontWeight: "bold", fontSize: 14 },
-
   emptyCard: {
     padding: 50,
     alignItems: "center",

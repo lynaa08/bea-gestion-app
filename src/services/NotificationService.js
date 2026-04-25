@@ -1,75 +1,108 @@
 // src/services/NotificationService.js
-// ✅ Zéro expo-notifications — fonctionne dans Expo Go SDK 53/54
-// Système de polling : vérifie les nouvelles notifs toutes les 30s
-
+// ✅ Push notifications locales + polling backend (pour DEVELOPPEUR)
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 import { getNotifications } from "../api/api";
 
-let _interval = null;
-let _knownIds = new Set();
-let _initialized = false;
-let _listeners = []; // callbacks enregistrés
-
-// ── Démarrer le polling ────────────────────────────────────────────────────
-export function startPolling() {
-  if (_interval) return; // déjà démarré
-
-  _poll(); // premier appel immédiat
-  _interval = setInterval(_poll, 30000); // puis toutes les 30s
-}
-
-// ── Arrêter le polling ─────────────────────────────────────────────────────
-export function stopPolling() {
-  if (_interval) {
-    clearInterval(_interval);
-    _interval = null;
-  }
-  _knownIds.clear();
-  _initialized = false;
-  _listeners = [];
-}
-
-// ── S'abonner aux nouvelles notifications ─────────────────────────────────
-// callback(nouvelles) sera appelé avec la liste des nouvelles notifs
-export function subscribeToNotifs(callback) {
-  _listeners.push(callback);
-  return () => {
-    _listeners = _listeners.filter((l) => l !== callback);
-  };
-}
-
-// ── Poll interne ───────────────────────────────────────────────────────────
-async function _poll() {
-  try {
-    const notifs = await getNotifications();
-    if (!Array.isArray(notifs) || notifs.length === 0) return;
-
-    if (!_initialized) {
-      // Premier appel : mémoriser les IDs existants, ne pas notifier
-      notifs.forEach((n) => _knownIds.add(n.id));
-      _initialized = true;
-      return;
-    }
-
-    // Trouver les nouvelles notifs non lues
-    const nouvelles = notifs.filter((n) => !_knownIds.has(n.id) && !n.lue);
-    nouvelles.forEach((n) => _knownIds.add(n.id));
-
-    if (nouvelles.length > 0) {
-      // Appeler tous les abonnés (ex: mettre à jour le badge)
-      _listeners.forEach((cb) => cb(nouvelles));
-    }
-  } catch (e) {
-    // Silencieux — l'user peut être déconnecté
-  }
-}
-
-// ── Compter les notifs non lues (pour le badge) ───────────────────────────
+// Afficher la notif même si l'app est ouverte
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 export async function getUnreadCount() {
   try {
     const notifs = await getNotifications();
-    if (!Array.isArray(notifs)) return 0;
+    if (!notifs) return 0;
+
     return notifs.filter((n) => !n.lue).length;
-  } catch {
+  } catch (e) {
     return 0;
+  }
+}
+
+// ─── Demander la permission (appeler au démarrage) ─────────────────────────
+export async function requestNotifPermission() {
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("bea-tasks", {
+      name: "BEA Tasks",
+      importance: Notifications.AndroidImportance.MAX,
+      sound: "default",
+      vibrationPattern: [0, 250, 250, 250],
+    });
+  }
+  const { status } = await Notifications.requestPermissionsAsync();
+  return status === "granted";
+}
+
+// ─── Envoyer une notification locale immédiate ─────────────────────────────
+export async function sendLocalNotification(title, body, data = {}) {
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title,
+      body,
+      sound: "default",
+      data,
+    },
+    trigger: null, // immédiatement
+  });
+}
+
+// ─── Polling : vérifie les nouvelles notifications backend ────────────────
+// Appeler uniquement pour DEVELOPPEUR
+let _pollingInterval = null;
+let _lastNotifIds = new Set();
+
+export function startNotifPolling(onNewNotif) {
+  if (_pollingInterval) return; // déjà lancé
+
+  // Première vérification immédiate
+  _pollOnce(onNewNotif);
+
+  // Puis toutes les 30 secondes
+  _pollingInterval = setInterval(() => {
+    _pollOnce(onNewNotif);
+  }, 30000);
+}
+
+export function stopNotifPolling() {
+  if (_pollingInterval) {
+    clearInterval(_pollingInterval);
+    _pollingInterval = null;
+  }
+  _lastNotifIds.clear();
+}
+
+async function _pollOnce(onNewNotif) {
+  try {
+    const notifs = await getNotifications();
+    if (!notifs || !notifs.length) return;
+
+    // Initialisation : ne pas notifier les anciennes au premier appel
+    if (_lastNotifIds.size === 0) {
+      notifs.forEach((n) => _lastNotifIds.add(n.id));
+      return;
+    }
+
+    // Trouver les nouvelles (id pas encore vus + pas lues)
+    const nouvelles = notifs.filter((n) => !_lastNotifIds.has(n.id) && !n.lue);
+
+    for (const n of nouvelles) {
+      _lastNotifIds.add(n.id);
+
+      // Déclencher push locale
+      await sendLocalNotification(
+        n.titre || "📋 Nouvelle notification",
+        n.message || "",
+        { notifId: n.id, projetId: n.projetId },
+      );
+
+      // Callback optionnel pour rafraîchir l'UI
+      if (onNewNotif) onNewNotif(n);
+    }
+  } catch (e) {
+    // Silencieux — l'utilisateur peut être déconnecté
   }
 }

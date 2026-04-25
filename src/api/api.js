@@ -1,10 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ⚠️ Remplacez par l'IP de votre PC (ipconfig → IPv4)
 export const BASE_URL = "http://192.168.1.72:8081/api";
 
-// ─── Token helpers ────────────────────────────────────────────────────────────
-export async function getToken() {
+async function getToken() {
   return await AsyncStorage.getItem("token");
 }
 
@@ -23,7 +21,7 @@ async function apiFetch(path, options = {}) {
   return res;
 }
 
-// ─── Auth ─────────────────────────────────────────────────────────────────────
+// ─── Auth ──────────────────────────────────────────────────────────────────
 export async function login(matricule, password) {
   const res = await fetch(`${BASE_URL}/auth/login`, {
     method: "POST",
@@ -35,7 +33,7 @@ export async function login(matricule, password) {
   return data;
 }
 
-// ─── Projets ──────────────────────────────────────────────────────────────────
+// ─── Projets ───────────────────────────────────────────────────────────────
 export async function getProjets() {
   const res = await apiFetch("/projets/all");
   if (!res.ok) throw new Error("Erreur chargement projets");
@@ -48,42 +46,42 @@ export async function getProjet(id) {
   return res.json();
 }
 
-export async function createProjet(data) {
-  const res = await apiFetch("/projets", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Erreur création projet");
-  return res.json();
-}
-
-// ─── Tâches ───────────────────────────────────────────────────────────────────
-// Récupérer toutes les tâches du user connecté
+// ─── Tâches ────────────────────────────────────────────────────────────────
 export async function getMesTaches() {
   const res = await apiFetch("/taches/me");
   if (!res.ok) return [];
   return res.json();
 }
 
-// Récupérer les tâches d'un projet
 export async function getTachesProjet(projetId) {
   const res = await apiFetch(`/taches/projet/${projetId}`);
   if (!res.ok) return [];
   return res.json();
 }
 
-// Créer une tâche (depuis l'app)
+export async function getTache(id) {
+  const res = await apiFetch(`/taches/${id}`);
+  if (!res.ok) throw new Error("Tâche introuvable");
+  return res.json();
+}
+
 export async function createTache(data) {
-  // data = { titre, description, projetId, assigneMatricule, dateEcheance }
   const res = await apiFetch("/taches", {
     method: "POST",
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Erreur création tâche");
+  if (!res.ok) {
+    // Lire le message d'erreur du backend
+    let msg = "Erreur création tâche";
+    try {
+      const err = await res.json();
+      msg = err.message || msg;
+    } catch {}
+    throw new Error(msg);
+  }
   return res.json();
 }
 
-// Mettre à jour le statut d'une tâche
 export async function updateTacheStatut(id, statut) {
   const res = await apiFetch(`/taches/${id}/statut`, {
     method: "PATCH",
@@ -93,21 +91,41 @@ export async function updateTacheStatut(id, statut) {
   return res.json();
 }
 
-// Marquer tâche terminée
-export async function marquerTacheTerminee(id) {
-  return updateTacheStatut(id, "TERMINEE");
-}
-
-// ─── Notifications ────────────────────────────────────────────────────────────
-export async function getNotifications() {
-  const res = await apiFetch("/notifications/me");
+// ─── Sous-tâches (to-do list dans une tâche) ──────────────────────────────
+export async function getSousTaches(tacheId) {
+  const res = await apiFetch(`/taches/${tacheId}/sous-taches`);
   if (!res.ok) return [];
   return res.json();
 }
 
-export async function getNotifCount() {
-  const res = await apiFetch("/notifications/me/count");
-  if (!res.ok) return { count: 0 };
+export async function createSousTache(tacheId, titre) {
+  const res = await apiFetch(`/taches/${tacheId}/sous-taches`, {
+    method: "POST",
+    body: JSON.stringify({ titre }),
+  });
+  if (!res.ok) throw new Error("Erreur création sous-tâche");
+  return res.json();
+}
+
+export async function toggleSousTache(tacheId, sousTacheId) {
+  const res = await apiFetch(
+    `/taches/${tacheId}/sous-taches/${sousTacheId}/toggle`,
+    { method: "PATCH" },
+  );
+  if (!res.ok) throw new Error("Erreur toggle sous-tâche");
+  return res.json();
+}
+
+export async function deleteSousTache(tacheId, sousTacheId) {
+  await apiFetch(`/taches/${tacheId}/sous-taches/${sousTacheId}`, {
+    method: "DELETE",
+  });
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────────
+export async function getNotifications() {
+  const res = await apiFetch("/notifications/me");
+  if (!res.ok) return [];
   return res.json();
 }
 
@@ -119,15 +137,20 @@ export async function markAllNotifsRead() {
   await apiFetch("/notifications/me/toutes-lues", { method: "PATCH" });
 }
 
-// ─── Problèmes ────────────────────────────────────────────────────────────────
-export async function getMesProblemes() {
-  const res = await apiFetch("/problemes/mine");
+export async function deleteNotification(id) {
+  await apiFetch(`/notifications/${id}`, { method: "DELETE" });
+}
+
+// ─── Utilisateurs ──────────────────────────────────────────────────────────
+export async function getDevelopeurs() {
+  const res = await apiFetch("/users/role/DEVELOPPEUR");
   if (!res.ok) return [];
   return res.json();
 }
 
-export async function getProblemes() {
-  const res = await apiFetch("/problemes");
+// ─── Problèmes ─────────────────────────────────────────────────────────────
+export async function getMesProblemes() {
+  const res = await apiFetch("/problemes/mine");
   if (!res.ok) return [];
   return res.json();
 }
@@ -138,18 +161,5 @@ export async function declarerProbleme(data) {
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Erreur déclaration problème");
-  return res.json();
-}
-
-// ─── Utilisateurs ─────────────────────────────────────────────────────────────
-export async function getUsers() {
-  const res = await apiFetch("/users");
-  if (!res.ok) return [];
-  return res.json();
-}
-
-export async function getDevelopeurs() {
-  const res = await apiFetch("/users/role/DEVELOPPEUR");
-  if (!res.ok) return [];
   return res.json();
 }
