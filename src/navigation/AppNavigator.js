@@ -3,13 +3,13 @@ import { View, Text, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
+ 
 import { useAuth, ROLES, hasRole } from "../context/AuthContext";
 import {
   startNotifPolling,
   stopNotifPolling,
 } from "../services/NotificationService";
-
+ 
 import LoginScreen from "../screens/LoginScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import TachesScreen from "../screens/TachesScreen";
@@ -17,7 +17,8 @@ import TacheDetailScreen from "../screens/TacheDetailScreen"; // ✅ nouveau
 import ProjetDetailScreen from "../screens/ProjetDetailScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import ProblemeScreen from "../screens/ProblemeScreen";
-
+import SettingsScreen from "../screens/SettingsScreen"; // ← NOUVEAU
+ 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 const COLORS = { primary: "#0D2B6E", active: "#5BB8E8", inactive: "#8A9FBF" };
@@ -34,7 +35,7 @@ function TabIcon({ emoji, count, focused }) {
     </View>
   );
 }
-
+ 
 const ic = StyleSheet.create({
   wrapper: {
     width: 30,
@@ -61,7 +62,7 @@ function MainTabs() {
   const { user } = useAuth();
   const isDev = hasRole(user, ROLES.DEV);
   const [unreadCount, setUnreadCount] = useState(0);
-
+ 
   useEffect(() => {
     startNotifPolling();
    
@@ -70,7 +71,7 @@ function MainTabs() {
       stopNotifPolling();
     };
   }, []);
-
+ 
   return (
     <Tab.Navigator
       screenOptions={{
@@ -97,7 +98,7 @@ function MainTabs() {
           ),
         }}
       />
-
+ 
       <Tab.Screen
         name="Tâches"
         component={TachesScreen}
@@ -107,7 +108,7 @@ function MainTabs() {
           ),
         }}
       />
-
+ 
       <Tab.Screen
         name="Notifications"
         component={NotificationsScreen}
@@ -118,7 +119,7 @@ function MainTabs() {
         }}
         listeners={{ tabPress: () => setUnreadCount(0) }}
       />
-
+ 
       {isDev && (
         <Tab.Screen
           name="Problèmes"
@@ -130,6 +131,19 @@ function MainTabs() {
           }}
         />
       )}
+ 
+      {/* ── Paramètres ── NOUVEAU */}
+      <Tab.Screen
+        name="Paramètres"
+        component={SettingsScreen}
+        options={{
+          headerShown: false,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon emoji="⚙️" count={0} focused={focused} />
+          ),
+        }}
+      />
+ 
     </Tab.Navigator>
   );
 }
@@ -162,7 +176,7 @@ function AppStack() {
 export default function AppNavigator() {
   const { user, loading } = useAuth();
   if (loading) return null;
-
+ 
   return (
     <NavigationContainer>
       {user ? (
