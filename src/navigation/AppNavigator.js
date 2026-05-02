@@ -7,14 +7,20 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 
 import { useAuth, ROLES, hasRole } from "../context/AuthContext";
 import {
-  startNotifPolling,
-  stopNotifPolling,
+  startPolling,
+  stopPolling,
+  subscribeToNotifs,
+  getUnreadCount,
 } from "../services/NotificationService";
-// ✅ Import du service de stats
 import {
   startDeviceStatsLogging,
   stopDeviceStatsLogging,
 } from "../services/DeviceStatsService";
+// ✅ Import du service deadline
+import {
+  startDeadlineCheck,
+  stopDeadlineCheck,
+} from "../services/DeadlineService";
 
 import LoginScreen from "../screens/LoginScreen";
 import DashboardScreen from "../screens/DashboardScreen";
@@ -30,11 +36,11 @@ const Stack = createNativeStackNavigator();
 const COLORS = { primary: "#0D2B6E", active: "#5BB8E8", inactive: "#8A9FBF" };
 
 function TabIcon({ iconLib, iconName, count, focused }) {
-  const iconColor = focused ? COLORS.active : COLORS.inactive;
+  const color = focused ? COLORS.active : COLORS.inactive;
   const Icon = iconLib === "material" ? MaterialIcons : Ionicons;
   return (
     <View style={ic.wrapper}>
-      <Icon name={iconName} size={24} color={iconColor} />
+      <Icon name={iconName} size={24} color={color} />
       {count > 0 && (
         <View style={ic.badge}>
           <Text style={ic.badgeText}>{count > 99 ? "99+" : count}</Text>
@@ -72,17 +78,30 @@ function MainTabs() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    // ✅ Démarrer les stats device dans le terminal
+    // Charger le badge initial
+    getUnreadCount().then(setUnreadCount);
+
+    // Démarrer les services
+    startPolling();
     startDeviceStatsLogging();
-    // Démarrer le polling des notifications
-    startNotifPolling();
+
+    // ✅ Démarrer la vérification des deadlines (DEV seulement)
+    if (isDev) {
+      startDeadlineCheck();
+    }
+
+    // S'abonner aux nouvelles notifs pour le badge
+    const unsub = subscribeToNotifs((nouvelles) => {
+      setUnreadCount((prev) => prev + nouvelles.length);
+    });
 
     return () => {
-      // ✅ Arrêter et afficher le résumé à la déconnexion
+      unsub();
+      stopPolling();
       stopDeviceStatsLogging();
-      stopNotifPolling();
+      if (isDev) stopDeadlineCheck();
     };
-  }, []);
+  }, [isDev]);
 
   return (
     <Tab.Navigator
