@@ -30,8 +30,9 @@ export async function requestNotifPermission() {
       vibrationPattern: [0, 250, 250, 250],
     });
   }
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === "granted";
+  _knownIds.clear();
+  _initialized = false;
+  _listeners = [];
 }
 
 export async function sendLocalNotification(title, body, data = {}) {
@@ -52,12 +53,15 @@ export function startNotifPolling(onNewNotif) {
   }, 30000);
 }
 
-export function stopNotifPolling() {
-  if (_pollingInterval) {
-    clearInterval(_pollingInterval);
-    _pollingInterval = null;
+// ── Compter les non lues ───────────────────────────────────────────────────
+export async function getUnreadCount() {
+  try {
+    const notifs = await getNotifications();
+    if (!Array.isArray(notifs)) return 0;
+    return notifs.filter((n) => !n.lue).length;
+  } catch {
+    return 0;
   }
-  _lastNotifIds.clear();
 }
 
 // ✅ Bug 1 — fonction manquante ajoutée
@@ -68,7 +72,16 @@ export async function refreshNow(onNewNotif) {
 async function _pollOnce(onNewNotif) {
   try {
     const notifs = await getNotifications();
-    if (!notifs || !notifs.length) return;
+    if (!Array.isArray(notifs) || notifs.length === 0) return;
+
+    if (!_initialized) {
+      // ✅ PREMIER CHARGEMENT :
+      // Alerter les notifs NON LUES existantes (déjà en attente)
+      const nonLues = notifs.filter((n) => !n.lue);
+
+      // Mémoriser toutes les notifs pour les polls suivants
+      notifs.forEach((n) => _knownIds.add(n.id));
+      _initialized = true;
 
     if (_lastNotifIds.size === 0) {
       notifs.forEach((n) => _lastNotifIds.add(n.id));

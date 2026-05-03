@@ -36,8 +36,10 @@ import SettingsScreen from "../screens/SettingsScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+const COLORS = { primary: "#0D2B6E", active: "#5BB8E8", inactive: "#8A9FBF" };
 
-function TabIcon({ iconLib, iconName, count, focused, color }) {
+function TabIcon({ iconLib, iconName, count, focused }) {
+  const color = focused ? COLORS.active : COLORS.inactive;
   const Icon = iconLib === "material" ? MaterialIcons : Ionicons;
   return (
     <View style={ic.wrapper}>
@@ -106,7 +108,6 @@ function HeaderLogo() {
 
 function MainTabs() {
   const { user } = useAuth();
-  const { C, isDark } = useTheme();
   const isDev = hasRole(user, ROLES.DEV);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -133,11 +134,11 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: C.tabBarActive,
-        tabBarInactiveTintColor: C.tabBarInactive,
+        tabBarActiveTintColor: COLORS.active,
+        tabBarInactiveTintColor: COLORS.inactive,
         tabBarStyle: {
-          backgroundColor: C.tabBar,
-          borderTopColor: C.tabBarBorder,
+          backgroundColor: "#fff",
+          borderTopColor: "#E0EAF5",
           height: 62,
           paddingBottom: 6,
         },
@@ -240,7 +241,6 @@ function MainTabs() {
 }
 
 function AppStack() {
-  const { C } = useTheme();
   const HEADER = {
     headerShown: true,
     headerStyle: { backgroundColor: C.header },
@@ -269,8 +269,6 @@ function AppStack() {
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
-  const { C, isDark } = useTheme();
-
   if (loading) return null;
 
   const navTheme = isDark
@@ -297,7 +295,7 @@ export default function AppNavigator() {
       };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer>
       {user ? (
         <AppStack />
       ) : (

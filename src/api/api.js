@@ -1,4 +1,7 @@
+// src/api/api.js
+// ✅ Toutes les requêtes passent par trackedFetch → mesure exacte des octets
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { trackedFetch } from "../services/NetworkTracker";
 
 export const BASE_URL = "http://192.168.1.72:8081/api";
 
@@ -10,24 +13,26 @@ async function getAuthHeaders() {
   const token = await getToken();
   return {
     "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
+// ✅ Remplace apiFetch — utilise trackedFetch pour mesurer les octets
 async function apiFetch(path, options = {}) {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  const res = await trackedFetch(`${BASE_URL}${path}`, { ...options }, headers);
   if (res.status === 401) throw new Error("SESSION_EXPIRED");
   return res;
 }
 
 // ─── Auth ──────────────────────────────────────────────────────────────────
 export async function login(matricule, password) {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ matricule, password }),
-  });
+  const headers = { "Content-Type": "application/json" };
+  const res = await trackedFetch(
+    `${BASE_URL}/auth/login`,
+    { method: "POST", body: JSON.stringify({ matricule, password }) },
+    headers,
+  );
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || "Identifiants incorrects");
   return data;
@@ -39,6 +44,12 @@ export async function getProjets() {
   if (!res.ok) throw new Error("Erreur chargement projets");
   return res.json();
 }
+export async function getMesProjets() {
+  const res = await apiFetch("/projets/mes-projets");
+  if (!res.ok) return [];
+  return res.json();
+}
+
 export async function getMesProjets() {
   const res = await apiFetch("/projets/mes-projets");
   if (!res.ok) return [];
@@ -76,7 +87,6 @@ export async function createTache(data) {
     body: JSON.stringify(data),
   });
   if (!res.ok) {
-    // Lire le message d'erreur du backend
     let msg = "Erreur création tâche";
     try {
       const err = await res.json();
@@ -96,7 +106,7 @@ export async function updateTacheStatut(id, statut) {
   return res.json();
 }
 
-// ─── Sous-tâches (to-do list dans une tâche) ──────────────────────────────
+// ─── Sous-tâches ──────────────────────────────────────────────────────────
 export async function getSousTaches(tacheId) {
   const res = await apiFetch(`/taches/${tacheId}/sous-taches`);
   if (!res.ok) return [];
@@ -140,10 +150,6 @@ export async function markNotifRead(id) {
 
 export async function markAllNotifsRead() {
   await apiFetch("/notifications/me/toutes-lues", { method: "PATCH" });
-}
-
-export async function deleteNotification(id) {
-  await apiFetch(`/notifications/${id}`, { method: "DELETE" });
 }
 
 // ─── Utilisateurs ──────────────────────────────────────────────────────────
