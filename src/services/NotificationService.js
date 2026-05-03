@@ -1,108 +1,116 @@
 // src/services/NotificationService.js
-// ✅ Push notifications locales + polling backend (pour DEVELOPPEUR)
-import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+// ✅ Zéro expo-notifications — polling pur, fonctionne dans Expo Go SDK 53/54
+import { Alert } from "react-native";
 import { getNotifications } from "../api/api";
 
-// Afficher la notif même si l'app est ouverte
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+let _interval = null;
+let _knownIds = new Set();
+let _initialized = false;
+let _listeners = [];
+
+// ── Démarrer le polling ────────────────────────────────────────────────────
+export function startPolling() {
+  if (_interval) return;
+  _poll();
+  _interval = setInterval(_poll, 30000);
+}
+
+// ── Arrêter le polling ─────────────────────────────────────────────────────
+export function stopPolling() {
+  if (_interval) {
+    clearInterval(_interval);
+    _interval = null;
+  }
+  _knownIds.clear();
+  _initialized = false;
+  _listeners = [];
+}
+
+// ── Forcer un refresh immédiat ─────────────────────────────────────────────
+export async function refreshNow() {
+  return _poll();
+}
+
+// ── S'abonner aux nouvelles notifs (pour le badge) ────────────────────────
+export function subscribeToNotifs(callback) {
+  _listeners.push(callback);
+  return () => {
+    _listeners = _listeners.filter((l) => l !== callback);
+  };
+}
+
+// ── Compter les non lues ───────────────────────────────────────────────────
 export async function getUnreadCount() {
   try {
     const notifs = await getNotifications();
-    if (!notifs) return 0;
-
+    if (!Array.isArray(notifs)) return 0;
     return notifs.filter((n) => !n.lue).length;
-  } catch (e) {
+  } catch {
     return 0;
   }
 }
 
-// ─── Demander la permission (appeler au démarrage) ─────────────────────────
-export async function requestNotifPermission() {
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("bea-tasks", {
-      name: "BEA Tasks",
-      importance: Notifications.AndroidImportance.MAX,
-      sound: "default",
-      vibrationPattern: [0, 250, 250, 250],
-    });
-  }
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === "granted";
-}
-
-// ─── Envoyer une notification locale immédiate ─────────────────────────────
-export async function sendLocalNotification(title, body, data = {}) {
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title,
-      body,
-      sound: "default",
-      data,
-    },
-    trigger: null, // immédiatement
-  });
-}
-
-// ─── Polling : vérifie les nouvelles notifications backend ────────────────
-// Appeler uniquement pour DEVELOPPEUR
-let _pollingInterval = null;
-let _lastNotifIds = new Set();
-
-export function startNotifPolling(onNewNotif) {
-  if (_pollingInterval) return; // déjà lancé
-
-  // Première vérification immédiate
-  _pollOnce(onNewNotif);
-
-  // Puis toutes les 30 secondes
-  _pollingInterval = setInterval(() => {
-    _pollOnce(onNewNotif);
-  }, 30000);
-}
-
-export function stopNotifPolling() {
-  if (_pollingInterval) {
-    clearInterval(_pollingInterval);
-    _pollingInterval = null;
-  }
-  _lastNotifIds.clear();
-}
-
-async function _pollOnce(onNewNotif) {
+// ── Poll interne ───────────────────────────────────────────────────────────
+async function _poll() {
   try {
     const notifs = await getNotifications();
-    if (!notifs || !notifs.length) return;
+    if (!Array.isArray(notifs) || notifs.length === 0) return;
 
-    // Initialisation : ne pas notifier les anciennes au premier appel
-    if (_lastNotifIds.size === 0) {
-      notifs.forEach((n) => _lastNotifIds.add(n.id));
+    if (!_initialized) {
+      // ✅ PREMIER CHARGEMENT :
+      // Alerter les notifs NON LUES existantes (déjà en attente)
+      const nonLues = notifs.filter((n) => !n.lue);
+
+      // Mémoriser toutes les notifs pour les polls suivants
+      notifs.forEach((n) => _knownIds.add(n.id));
+      _initialized = true;
+
+      if (nonLues.length > 0) {
+        _listeners.forEach((cb) => cb(nonLues));
+        // Petit délai pour que l'app soit bien chargée avant l'alerte
+        setTimeout(() => _afficherAlertes(nonLues), 1500);
+      }
       return;
     }
 
-    // Trouver les nouvelles (id pas encore vus + pas lues)
-    const nouvelles = notifs.filter((n) => !_lastNotifIds.has(n.id) && !n.lue);
+    // ✅ POLLS SUIVANTS :
+    // Seulement les notifs dont l'ID n'est pas encore connu
+    const nouvelles = notifs.filter((n) => !_knownIds.has(n.id));
+    nouvelles.forEach((n) => _knownIds.add(n.id));
 
-    for (const n of nouvelles) {
-      _lastNotifIds.add(n.id);
+    // Parmi les nouvelles → seulement les non lues déclenchent l'alerte
+    const aAlerter = nouvelles.filter((n) => !n.lue);
+    if (aAlerter.length === 0) return;
 
-      // Déclencher push locale
-      await sendLocalNotification(
-        n.titre || "📋 Nouvelle notification",
-        n.message || "",
-        { notifId: n.id, projetId: n.projetId },
-      );
+    _listeners.forEach((cb) => cb(aAlerter));
+    _afficherAlertes(aAlerter);
+  } catch {
+    /* silencieux */
+  }
+}
 
-      // Callback optionnel pour rafraîchir l'UI
-      if (onNewNotif) onNewNotif(n);
-    }
-  } catch (e) {
-    // Silencieux — l'utilisateur peut être déconnecté
+// ── Afficher les alertes ──────────────────────────────────────────────────
+function _afficherAlertes(notifs) {
+  if (!notifs || notifs.length === 0) return;
+
+  if (notifs.length === 1) {
+    // Une seule → Alert simple
+    const n = notifs[0];
+    Alert.alert(n.titre || "🔔 Nouvelle notification", n.message || "", [
+      { text: "OK" },
+    ]);
+  } else {
+    // Plusieurs → résumé groupé
+    const lignes = notifs
+      .slice(0, 5)
+      .map((n) => `• ${n.titre || n.message || "Notification"}`)
+      .join("\n");
+
+    Alert.alert(
+      `🔔 ${notifs.length} notifications non lues`,
+      lignes +
+        (notifs.length > 5 ? `\n... et ${notifs.length - 5} autres` : ""),
+      [{ text: "OK" }],
+    );
   }
 }

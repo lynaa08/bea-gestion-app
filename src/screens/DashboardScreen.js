@@ -1,32 +1,69 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
-import { getNotifications, markNotifRead, getProjets } from "../api/api";
-import { useAuth, canCreateTache } from "../context/AuthContext";
-import { useTheme } from "../context/ThemeContext";
+
+import {
+  getNotifications,
+  markNotifRead,
+  getProjets,
+  getMesProjets,
+} from "../api/api";
+import { useAuth, ROLES, hasRole } from "../context/AuthContext";
+
+const COLORS = {
+  primary: "#0D2B6E",
+  accent: "#5BB8E8",
+  bg: "#F5F8FD",
+  card: "#fff",
+  border: "#E0EAF5",
+  text: "#1A2B4A",
+  muted: "#8A9FBF",
+  success: "#27AE60",
+  danger: "#E74C3C",
+  warning: "#F39C12",
+};
 
 export default function DashboardScreen({ navigation }) {
-  const { C } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [notifs, setNotifs] = useState([]);
   const [projets, setProjets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // ✅ Le DEV voit seulement SES projets, les autres voient tout
+  const isDev = hasRole(user, ROLES.DEV);
+
   const loadData = useCallback(async () => {
     try {
-      const [n, p] = await Promise.all([getNotifications(), getProjets()]);
+      // ✅ Appel différent selon le rôle
+      const projetsFn = isDev ? getMesProjets : getProjets;
+      const [n, p] = await Promise.all([getNotifications(), projetsFn()]);
       setNotifs(n.slice(0, 3));
       setProjets(p);
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); setRefreshing(false); }
-  }, []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [isDev]);
 
-  useEffect(() => { loadData(); }, [loadData]);
-  const onRefresh = () => { setRefreshing(true); loadData(); };
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadData();
+  };
 
   const dismissNotif = async (id) => {
     await markNotifRead(id);
@@ -34,44 +71,70 @@ export default function DashboardScreen({ navigation }) {
   };
 
   const statutColor = (s) => {
-    if (!s) return C.muted;
+    if (!s) return COLORS.muted;
     const sl = s.toUpperCase();
-    if (sl.includes("ACTIF") || sl.includes("EN_COURS")) return C.success;
-    if (sl.includes("TERMINE")) return C.primary;
-    if (sl.includes("RETARD")) return C.danger;
-    return C.warning;
+    if (sl.includes("ACTIF") || sl.includes("EN_COURS")) return COLORS.success;
+    if (sl.includes("TERMINE")) return COLORS.primary;
+    if (sl.includes("RETARD")) return COLORS.danger;
+    return COLORS.warning;
   };
 
-  if (loading) return (
-    <View style={[styles.center, { backgroundColor: C.bg }]}>
-      <ActivityIndicator size="large" color={C.accent} />
-    </View>
-  );
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.bg }}
-      contentContainerStyle={{ paddingBottom: 30 }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }>
+      {/* ── Header user ── */}
+      <View style={styles.header}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {(user?.prenom?.[0] || "") + (user?.nom?.[0] || "")}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.userName}>
+            {user?.prenom} {user?.nom}
+          </Text>
+          <Text style={styles.userSub}>
+            {user?.matricule} · {user?.role}
+          </Text>
+        </View>
+        <TouchableOpacity onPress={logout} style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>Déconnexion</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* ── Notifications ── */}
+      {/* ── Notifications résumé ── */}
       {notifs.length > 0 && (
-        <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
+        <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, { color: C.text }]}> Notifications</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Notifications")}>
-              <Text style={{ color: C.accent, fontSize: 13 }}>Voir tout</Text>
+            <Text style={styles.cardTitle}>🔔 Notifications</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Notifications")}>
+              <Text style={styles.seeAll}>Voir tout</Text>
             </TouchableOpacity>
           </View>
           {notifs.map((n) => (
-            <View key={n.id} style={[styles.notifRow, { borderTopColor: C.border }]}>
+            <View key={n.id} style={styles.notifRow}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: C.muted, fontSize: 11, marginBottom: 2 }}>{n.dateCreation || n.date}</Text>
-                <Text style={{ color: C.text, fontSize: 13 }} numberOfLines={2}>{n.message}</Text>
+                <Text style={styles.notifDate}>{n.dateCreation || n.date}</Text>
+                <Text style={styles.notifMsg} numberOfLines={2}>
+                  {n.message}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => dismissNotif(n.id)}
-                style={[styles.notifBtn, { backgroundColor: C.btnOkBg }]}>
-                <Text style={{ color: C.success, fontWeight: "bold", fontSize: 16 }}>✓</Text>
+              <TouchableOpacity
+                onPress={() => dismissNotif(n.id)}
+                style={styles.notifBtn}>
+                <Text style={styles.notifCheck}>✓</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -80,58 +143,167 @@ export default function DashboardScreen({ navigation }) {
 
       {/* ── Projets ── */}
       <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: C.text }]}> Mes Projets</Text>
-        {canCreateTache(user) && (
-          <TouchableOpacity style={[styles.addBtn, { backgroundColor: C.primary }]}
-            onPress={() => navigation.navigate("CreateProjet")}>
-            <Text style={styles.addBtnText}>+ Nouveau</Text>
-          </TouchableOpacity>
-        )}
+        {/* ✅ Titre selon le rôle */}
+        <Text style={styles.sectionTitle}>
+          {isDev ? "Mes Projets" : "Projets"}
+        </Text>
+        {/* ✅ Aucun bouton "Nouveau" — lecture seule pour tous */}
       </View>
 
       {projets.length === 0 ? (
-        <View style={[styles.emptyCard, { backgroundColor: C.card, borderColor: C.border }]}>
-          <MaterialIcons name="folder-open" size={40} color={C.border} />
-          <Text style={{ color: C.muted, fontSize: 14, marginTop: 8 }}>Aucun projet assigné</Text>
+        <View style={styles.emptyCard}>
+          <MaterialIcons name="folder-open" size={48} color="#C0D0E8" />
+          <Text style={styles.emptyTitle}>
+            {isDev ? "Aucun projet assigné" : "Aucun projet"}
+          </Text>
+          <Text style={styles.emptyText}>
+            {isDev
+              ? "Vous n'êtes encore associé à aucun projet."
+              : "Aucun projet disponible."}
+          </Text>
         </View>
       ) : (
         projets.map((p) => (
-          <TouchableOpacity key={p.id}
-            style={[styles.projetCard, { backgroundColor: C.card, borderColor: C.border }]}
-            onPress={() => navigation.navigate("ProjetDetail", { projetId: p.id })}
+          <TouchableOpacity
+            key={p.id}
+            style={styles.projetCard}
+            onPress={() =>
+              navigation.navigate("ProjetDetail", { projetId: p.id })
+            }
             activeOpacity={0.8}>
             <View style={{ flex: 1 }}>
-              <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>{p.nom}</Text>
-              <Text style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>{p.matricule}</Text>
+              <Text style={styles.projetNom}>{p.nom}</Text>
+              <Text style={styles.projetSub}>{p.matricule}</Text>
             </View>
-            <View style={{
-              paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
-              backgroundColor: statutColor(p.statut) + "22", marginLeft: 8,
-            }}>
-              <Text style={{ color: statutColor(p.statut), fontSize: 11, fontWeight: "600" }}>
+            <View
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 3,
+                borderRadius: 8,
+                backgroundColor: statutColor(p.statut) + "22",
+                marginLeft: 8,
+              }}>
+              <Text
+                style={{
+                  color: statutColor(p.statut),
+                  fontSize: 11,
+                  fontWeight: "600",
+                }}>
                 {p.statut || "N/A"}
               </Text>
             </View>
-            <Text style={{ color: C.muted, fontSize: 22, marginLeft: 4 }}> ›</Text>
+            <Text style={styles.arrow}> ›</Text>
           </TouchableOpacity>
         ))
       )}
-
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.bg },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  card: { margin: 16, marginBottom: 0, borderRadius: 12, padding: 14, borderWidth: 1 },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  cardTitle: { fontWeight: "bold", fontSize: 15 },
-  notifRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderTopWidth: 1, gap: 8 },
-  notifBtn: { width: 32, height: 32, borderRadius: 16, justifyContent: "center", alignItems: "center" },
-  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginHorizontal: 16, marginTop: 20, marginBottom: 8 },
-  sectionTitle: { fontWeight: "bold", fontSize: 16 },
-  addBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  addBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  projetCard: { flexDirection: "row", alignItems: "center", marginHorizontal: 16, marginBottom: 10, borderRadius: 12, padding: 14, borderWidth: 1 },
-  emptyCard: { margin: 16, padding: 30, borderRadius: 12, alignItems: "center", borderWidth: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: COLORS.accent,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
+  userName: { color: "#fff", fontWeight: "bold", fontSize: 15 },
+  userSub: { color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 1 },
+  logoutBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.4)",
+  },
+  logoutText: { color: "#fff", fontSize: 12 },
+  card: {
+    backgroundColor: COLORS.card,
+    margin: 16,
+    marginBottom: 0,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  cardTitle: { color: COLORS.text, fontWeight: "bold", fontSize: 15 },
+  seeAll: { color: COLORS.accent, fontSize: 13 },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    gap: 8,
+  },
+  notifDate: { color: COLORS.muted, fontSize: 11, marginBottom: 2 },
+  notifMsg: { color: COLORS.text, fontSize: 13 },
+  notifBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#E8F5E9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  notifCheck: { color: COLORS.success, fontWeight: "bold", fontSize: 16 },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  sectionTitle: { color: COLORS.text, fontWeight: "bold", fontSize: 16 },
+  projetCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  projetNom: { color: COLORS.text, fontWeight: "bold", fontSize: 15 },
+  projetSub: { color: COLORS.muted, fontSize: 12, marginTop: 2 },
+  arrow: { color: COLORS.muted, fontSize: 22, marginLeft: 4 },
+  emptyCard: {
+    margin: 16,
+    padding: 32,
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  emptyTitle: {
+    color: COLORS.text,
+    fontWeight: "bold",
+    fontSize: 15,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  emptyText: { color: COLORS.muted, fontSize: 13, textAlign: "center" },
 });
