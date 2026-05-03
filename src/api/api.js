@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const BASE_URL = "http://192.168.42.77:8081/api";
+export const BASE_URL = "http://192.168.1.72:8081/api";
 
 async function getToken() {
   return await AsyncStorage.getItem("token");
@@ -37,6 +37,11 @@ export async function login(matricule, password) {
 export async function getProjets() {
   const res = await apiFetch("/projets/all");
   if (!res.ok) throw new Error("Erreur chargement projets");
+  return res.json();
+}
+export async function getMesProjets() {
+  const res = await apiFetch("/projets/mes-projets");
+  if (!res.ok) return [];
   return res.json();
 }
 
