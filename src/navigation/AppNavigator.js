@@ -73,34 +73,23 @@ const ic = StyleSheet.create({
   badgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
 });
 
-// ── Logo icône BEA dans un cercle blanc avec relief ──────────
-// Fond BLANC fixe dans les 2 modes — le logo a déjà ses propres couleurs
+// Pour les TABS (TachesScreen) — grand
 function HeaderLogo() {
   return (
-    <View
-      style={{
-        marginLeft: 19,
-        width: 38,
-        height: 38,
-        borderRadius: 19,
-        backgroundColor: "#FFFFFF",
-        borderWidth: 1.5,
-        borderColor: "rgba(255,255,255,0.5)",
-        justifyContent: "center",
-        alignItems: "center",
-        // Relief iOS
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        // Relief Android
-        elevation: 5,
-      }}>
-      <Image
-        source={require("../../assets/images/favicon.png")}
-        style={{ width: 26, height: 26, resizeMode: "contain" }}
-      />
-    </View>
+    <Image
+      source={require("../../assets/images/favicon.png")}
+      style={{ width: 42, height: 42, resizeMode: "contain", marginLeft: 12 }}
+    />
+  );
+}
+
+// Pour le STACK (TacheDetailScreen) — même style
+function HeaderLogoStack() {
+  return (
+    <Image
+      source={require("../../assets/images/favicon.png")}
+      style={{ width: 36, height: 36, resizeMode: "contain", marginLeft: 12 }}
+    />
   );
 }
 
@@ -241,15 +230,14 @@ function MainTabs() {
 
 function AppStack() {
   const { C } = useTheme();
-  const HEADER = {
-    headerShown: true,
-    headerStyle: { backgroundColor: C.header },
-    headerTintColor: C.headerText,
-    headerTitleStyle: { fontWeight: "bold", fontSize: 15, marginLeft: 8 },
-    headerTitleContainerStyle: { paddingLeft: 12 },
-    headerLeft: () => <HeaderLogo />,
-    headerTitleAlign: "center",
-  };
+const HEADER = {
+  headerShown: true,
+  headerStyle: { backgroundColor: C.header },  
+  headerTintColor: C.headerText,
+  headerTitleStyle: { fontWeight: "bold", fontSize: 15 },
+  headerTitleAlign: "center",
+  headerLeft: () => <HeaderLogoStack />,  
+};
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={MainTabs} />

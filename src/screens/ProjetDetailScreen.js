@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
   Modal, TextInput, ActivityIndicator, Alert,
@@ -60,7 +60,7 @@ export default function ProjetDetailScreen({ route, navigation }) {
     try {
       await createTache({ titre: formTitre.trim(), description: formDesc.trim(), projetId, assigneMatricule: formDev?.matricule || null, dateEcheance: dateISO });
       setFormTitre(""); setFormDesc(""); setFormDev(null); setFormDate(""); setModalVisible(false);
-      Alert.alert("✅ Tâche créée", `"${formTitre}" a été ajoutée au projet.`);
+      Alert.alert("Tâche créée", `"${formTitre}" a été ajoutée au projet.`);
       await loadData();
     } catch (e) { Alert.alert("Erreur", e.message); }
     finally { setSaving(false); }
@@ -99,7 +99,11 @@ export default function ProjetDetailScreen({ route, navigation }) {
 
         {projet.equipe?.length > 0 && (
           <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border }]}>
-            <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>👥 Équipe</Text>
+            {/* 👥 remplacé par Ionicons */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+              <Ionicons name="people" size={18} color={C.text} />
+              <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>Équipe</Text>
+            </View>
             {projet.equipe.map((m, i) => (
               <View key={m.matricule || i} style={[styles.membreRow, { borderTopColor: C.border }]}>
                 <View style={[styles.membreAvatar, { backgroundColor: C.accent + "44" }]}>
@@ -118,7 +122,11 @@ export default function ProjetDetailScreen({ route, navigation }) {
         )}
 
         <View style={styles.tachesHeader}>
-          <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>📋 Tâches ({taches.length})</Text>
+          {/* 📋 remplacé par Ionicons */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="clipboard-outline" size={18} color={C.text} />
+            <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>Tâches ({taches.length})</Text>
+          </View>
         </View>
 
         {taches.length === 0 ? (
@@ -149,7 +157,8 @@ export default function ProjetDetailScreen({ route, navigation }) {
 
       {peutCreer && (
         <TouchableOpacity style={[styles.fab, { backgroundColor: C.primary }]} onPress={() => setModalVisible(true)} activeOpacity={0.85}>
-          <Text style={styles.fabText}>+</Text>
+          {/* + remplacé par Ionicons */}
+          <Ionicons name="add" size={32} color="#fff" />
         </TouchableOpacity>
       )}
 
@@ -172,29 +181,42 @@ export default function ProjetDetailScreen({ route, navigation }) {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-                <Text style={[styles.lbl, { color: C.muted }]}>Date d'échéance</Text>
-<TextInput
-  style={[styles.input, { borderColor: C.border, color: C.text, backgroundColor: C.inputBg }]}
-  placeholder="JJ/MM/AAAA"
-  placeholderTextColor={C.muted}
-  value={formDate}
-  onChangeText={(val) => {
-    if (val.length < formDate.length) { setFormDate(val); return; }
-    const digits = val.replace(/\D/g, "").substring(0, 8);
-    let f = digits;
-    if (digits.length > 2) f = digits.slice(0, 2) + "/" + digits.slice(2);
-    if (digits.length > 4) f = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
-    setFormDate(f);
-  }}
-  keyboardType="number-pad"
-  maxLength={10}
-/>                      <Text style={{ color: C.muted, fontSize: 11, marginBottom: 8 }}>Format : JJ/MM/AAAA — les / s'ajoutent automatiquement</Text>
+            <Text style={[styles.lbl, { color: C.muted }]}>Date d'échéance</Text>
+            <TextInput
+              style={[styles.input, { borderColor: C.border, color: C.text, backgroundColor: C.inputBg }]}
+              placeholder="JJ/MM/AAAA"
+              placeholderTextColor={C.muted}
+              value={formDate}
+              onChangeText={(val) => {
+                if (val.length < formDate.length) { setFormDate(val); return; }
+                const digits = val.replace(/\D/g, "").substring(0, 8);
+                let f = digits;
+                if (digits.length > 2) f = digits.slice(0, 2) + "/" + digits.slice(2);
+                if (digits.length > 4) f = digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+                setFormDate(f);
+              }}
+              keyboardType="number-pad"
+              maxLength={10}
+            />
+            <Text style={{ color: C.muted, fontSize: 11, marginBottom: 8 }}>Format : JJ/MM/AAAA — les / s'ajoutent automatiquement</Text>
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.btnCancel, { borderColor: C.border }]} onPress={() => { setModalVisible(false); setFormTitre(""); setFormDesc(""); setFormDev(null); setFormDate(""); }}>
-                <Text style={{ color: C.muted, fontWeight: "600" }}>Annuler</Text>
+                {/* Bouton Annuler avec icône */}
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons name="close-circle-outline" size={18} color={C.muted} />
+                  <Text style={{ color: C.muted, fontWeight: "600" }}>Annuler</Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.btnSave, { backgroundColor: C.primary }]} onPress={handleCreateTache} disabled={saving}>
-                {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 15 }}>Créer</Text>}
+                {saving ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  /* Bouton Créer avec icône */
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                    <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 15 }}>Créer</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -230,7 +252,6 @@ const styles = StyleSheet.create({
   tacheBadge: { alignSelf: "flex-start", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   emptyCard: { margin: 12, padding: 24, borderRadius: 12, alignItems: "center", borderWidth: 1 },
   fab: { position: "absolute", bottom: 24, right: 24, width: 58, height: 58, borderRadius: 29, justifyContent: "center", alignItems: "center", elevation: 6 },
-  fabText: { color: "#fff", fontSize: 34, lineHeight: 38, fontWeight: "300" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   modalBox: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 40 },
   handle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 16 },
@@ -242,4 +263,5 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", gap: 10, marginTop: 20 },
   btnCancel: { flex: 1, padding: 14, borderRadius: 12, borderWidth: 1, alignItems: "center" },
   btnSave: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center" },
+  lbl: { fontSize: 13, marginBottom: 4, marginTop: 12 },
 });

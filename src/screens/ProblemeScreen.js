@@ -4,7 +4,7 @@ import {
   View, Text, FlatList, TouchableOpacity, TextInput, StyleSheet,
   Modal, ActivityIndicator, Alert, ScrollView,
 } from "react-native";
-import { getMesProblemes, declarerProbleme, getProjets } from "../api/api";
+import { getMesProblemes, declarerProbleme, getMesProjets } from "../api/api";
 import { useTheme } from "../context/ThemeContext";
 
 export default function ProblemeScreen() {
@@ -22,7 +22,7 @@ export default function ProblemeScreen() {
 
   useEffect(() => {
     (async () => {
-      const [p, pr] = await Promise.all([getMesProblemes(), getProjets()]);
+      const [p, pr] = await Promise.all([getMesProblemes(), getMesProjets()]);
       setProblemes(p); setProjets(pr); setLoading(false);
     })();
   }, []);
