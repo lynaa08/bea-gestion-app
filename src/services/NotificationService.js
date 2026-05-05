@@ -79,7 +79,7 @@ async function _pollOnce(onNewNotif) {
     for (const n of nouvelles) {
       _lastNotifIds.add(n.id);
       await sendLocalNotification(
-        n.titre || "📋 Nouvelle notification",
+        n.titre || "Nouvelle notification",  
         n.message || "",
         { notifId: n.id, projetId: n.projetId },
       );
