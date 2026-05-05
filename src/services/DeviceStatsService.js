@@ -48,7 +48,7 @@ async function _logStats() {
     : 0;
 
   console.log(`\n┌──────────────────────────────────────────────────`);
-  console.log(`│  📊 BEA Tasks Stats — ${now}`);
+  console.log(`│   BEA Tasks Stats — ${now}`);
   console.log(`├──────────────────────────────────────────────────`);
 
   // 1️⃣ Batterie
@@ -58,10 +58,10 @@ async function _logStats() {
     const pct = Math.round(level * 100);
     const icon = pct > 60 ? "🟢" : pct > 20 ? "🟡" : "🔴";
     console.log(
-      `│  🔋 Batterie    : ${icon} ${pct}% — ${_batteryLabel(state)}`,
+      `│   Batterie    : ${icon} ${pct}% — ${_batteryLabel(state)}`,
     );
   } catch {
-    console.log(`│  🔋 Batterie    : Non disponible (Expo Go)`);
+    console.log(`│   Batterie    : Non disponible (Expo Go)`);
   }
 
   // 2️⃣ Stockage
@@ -73,10 +73,10 @@ async function _logStats() {
     const used = Math.round(((total - free) / total) * 100);
     const icon = used < 70 ? "🟢" : used < 90 ? "🟡" : "🔴";
     console.log(
-      `│  💾 Stockage    : ${icon} ${fGB} GB libres / ${tGB} GB (${used}% utilisé)`,
+      `│   Stockage    : ${icon} ${fGB} GB libres / ${tGB} GB (${used}% utilisé)`,
     );
   } catch {
-    console.log(`│  💾 Stockage    : Non disponible`);
+    console.log(`│   Stockage    : Non disponible`);
   }
 
   // 3️⃣ Type de réseau
@@ -85,7 +85,7 @@ async function _logStats() {
     const type = net.type || "UNKNOWN";
     const conn = net.isConnected ? "✅" : "❌";
     const icon = type.includes("WIFI")
-      ? "📶"
+      ? ""
       : type.includes("CELLULAR")
         ? "📡"
         : "🔌";
@@ -93,7 +93,7 @@ async function _logStats() {
       `│  ${icon} Connexion   : ${conn} ${type} — Internet: ${net.isInternetReachable ? "OK" : "KO"}`,
     );
   } catch {
-    console.log(`│  📶 Connexion   : Non disponible`);
+    console.log(`│   Connexion   : Non disponible`);
   }
 
   // 4️⃣ ✅ Données réseau EXACTES (octets mesurés par trackedFetch)
@@ -102,8 +102,8 @@ async function _logStats() {
   // 5️⃣ Énergie estimée
   const stats = getNetworkStats();
   const estMah = ((elapsedMin / 10) * 5 + stats.callCount * 0.15).toFixed(2);
-  console.log(`│  ⚡ Énergie      : ~${estMah} mAh estimés`);
-  console.log(`│  ⏱️  Session      : ${elapsedMin} minutes`);
+  console.log(`│   Énergie      : ~${estMah} mAh estimés`);
+  console.log(`│   Session      : ${elapsedMin} minutes`);
   console.log(`└──────────────────────────────────────────────────\n`);
 }
 
@@ -118,14 +118,14 @@ function _logSummary() {
   console.log("\n╔══════════════════════════════════════════════════╗");
   console.log("║         BEA Tasks — Session Summary             ║");
   console.log("╠══════════════════════════════════════════════════╣");
-  console.log(`║  ⏱️  Durée            : ${elapsedMin} minutes`);
-  console.log(`║  🔄 Appels API       : ${stats.callCount}`);
-  console.log(`║  ↑  Données envoyées : ${stats.sentKB} KB`);
-  console.log(`║  ↓  Données reçues   : ${stats.receivedKB} KB`);
+  console.log(`║    Durée            : ${elapsedMin} minutes`);
+  console.log(`║    Appels API       : ${stats.callCount}`);
+  console.log(`║    Données envoyées : ${stats.sentKB} KB`);
+  console.log(`║    Données reçues   : ${stats.receivedKB} KB`);
   console.log(
-    `║  📡 Total réseau     : ${stats.totalKB} KB (${stats.totalMB} MB)`,
+              `║    Total réseau     : ${stats.totalKB} KB (${stats.totalMB} MB)`,
   );
-  console.log(`║  💰 Coût estimé      : ~${cout} DZD`);
+  console.log(`║    Coût estimé      : ~${cout} DZD`);
   console.log("╚══════════════════════════════════════════════════╝\n");
 }
 
@@ -134,7 +134,7 @@ function _batteryLabel(state) {
     case Battery.BatteryState.CHARGING:
       return "En charge 🔌";
     case Battery.BatteryState.FULL:
-      return "Complète ✅";
+      return "Complète ";
     case Battery.BatteryState.UNPLUGGED:
       return "Sur batterie";
     default:

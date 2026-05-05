@@ -15,6 +15,7 @@ import {
   startNotifPolling,
   stopNotifPolling,
   getUnreadCount,
+  requestNotifPermission,
 } from "../services/NotificationService";
 import {
   startDeadlineCheck,
@@ -73,23 +74,47 @@ const ic = StyleSheet.create({
   badgeText: { color: "#fff", fontSize: 10, fontWeight: "bold" },
 });
 
-// Pour les TABS (TachesScreen) — grand
+// Pour les TABS — logo avec fond blanc arrondi adaptatif
 function HeaderLogo() {
   return (
-    <Image
-      source={require("../../assets/images/favicon.png")}
-      style={{ width: 42, height: 42, resizeMode: "contain", marginLeft: 12 }}
-    />
+    <View style={{
+      marginLeft: 12,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 10,
+      padding: 4,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.12,
+      shadowRadius: 3,
+      elevation: 3,
+    }}>
+      <Image
+        source={require("../../assets/images/favicon.png")}
+        style={{ width: 36, height: 36, resizeMode: "contain" }}
+      />
+    </View>
   );
 }
 
-// Pour le STACK (TacheDetailScreen) — même style
+// Pour le STACK (TacheDetailScreen / ProjetDetailScreen) — même style légèrement plus petit
 function HeaderLogoStack() {
   return (
-    <Image
-      source={require("../../assets/images/favicon.png")}
-      style={{ width: 36, height: 36, resizeMode: "contain", marginLeft: 12 }}
-    />
+    <View style={{
+      marginLeft: 12,
+      backgroundColor: "#FFFFFF",
+      borderRadius: 9,
+      padding: 3,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.12,
+      shadowRadius: 3,
+      elevation: 3,
+    }}>
+      <Image
+        source={require("../../assets/images/favicon.png")}
+        style={{ width: 32, height: 32, resizeMode: "contain" }}
+      />
+    </View>
   );
 }
 
@@ -100,6 +125,9 @@ function MainTabs() {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    // Demander la permission notifications au démarrage
+    requestNotifPermission();
+
     // Charger le nombre de non-lues au démarrage
     getUnreadCount().then(setUnreadCount);
 
