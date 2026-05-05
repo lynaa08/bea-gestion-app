@@ -186,15 +186,9 @@ export default function DashboardScreen({ navigation }) {
 
       {/* ── Mes Projets ── */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Mes projets</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate("Projets")}
-            style={styles.seeAllBtn}>
-            <Text style={styles.seeAllText}>Tous les projets</Text>
-            <MaterialIcons name="chevron-right" size={16} color="#2563EB" />
-          </TouchableOpacity>
-        </View>
+      <View style={styles.sectionHeader}>
+  <Text style={styles.sectionTitle}>Mes projets</Text>
+</View>
 
         {projets.length === 0 ? (
           <View style={styles.emptyCard}>
@@ -228,20 +222,6 @@ export default function DashboardScreen({ navigation }) {
                     <Text style={styles.projetNom} numberOfLines={1}>
                       {p.nom}
                     </Text>
-                    <View style={styles.projetSubRow}>
-                      <View
-                        style={[
-                          styles.projetDot,
-                          { backgroundColor: sc.color },
-                        ]}
-                      />
-                      <Text style={styles.projetMeta}>
-                        {p.statut?.includes("RETARD") || p.statut?.includes("retard")
-                          ? "En retard"
-                          : "En cours"}{" "}
-                        • {p.matricule}
-                      </Text>
-                    </View>
                   </View>
 
                   {/* Badge statut */}
@@ -252,8 +232,6 @@ export default function DashboardScreen({ navigation }) {
                         : "ACTIF"}
                     </Text>
                   </View>
-
-                  <MaterialIcons name="chevron-right" size={20} color="#94A3B8" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
               );
             })}
