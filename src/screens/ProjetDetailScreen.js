@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { MaterialIcons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -94,14 +94,15 @@ export default function ProjetDetailScreen({ route, navigation }) {
         titre: formTitre.trim(),
         description: formDesc.trim(),
         projetId,
-        assigneMatricule: null,
+        assigneMatricule: formDev?.matricule || null,
         dateEcheance: dateISO,
       });
       setFormTitre("");
       setFormDesc("");
+      setFormDev(null);
       setFormDate("");
       setModalVisible(false);
-      Alert.alert("✅ Tâche créée", `"${formTitre}" a été ajoutée au projet.`);
+      Alert.alert("Tâche créée", `"${formTitre}" a été ajoutée au projet.`);
       await loadData();
     } catch (e) {
       Alert.alert("Erreur", e.message);
@@ -165,9 +166,19 @@ export default function ProjetDetailScreen({ route, navigation }) {
               styles.card,
               { backgroundColor: C.card, borderColor: C.border },
             ]}>
-            <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>
-              👥 Équipe
-            </Text>
+            {/* 👥 remplacé par Ionicons */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                marginBottom: 4,
+              }}>
+              <Ionicons name="people" size={18} color={C.text} />
+              <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>
+                Équipe
+              </Text>
+            </View>
             {projet.equipe.map((m, i) => (
               <View
                 key={m.matricule || i}
@@ -215,9 +226,13 @@ export default function ProjetDetailScreen({ route, navigation }) {
         )}
 
         <View style={styles.tachesHeader}>
-          <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>
-            📋 Tâches ({taches.length})
-          </Text>
+          {/* 📋 remplacé par Ionicons */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="clipboard-outline" size={18} color={C.text} />
+            <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>
+              Tâches ({taches.length})
+            </Text>
+          </View>
         </View>
 
         {taches.length === 0 ? (
@@ -298,7 +313,8 @@ export default function ProjetDetailScreen({ route, navigation }) {
           style={[styles.fab, { backgroundColor: C.primary }]}
           onPress={() => setModalVisible(true)}
           activeOpacity={0.85}>
-          <Text style={styles.fabText}>+</Text>
+          {/* + remplacé par Ionicons */}
+          <Ionicons name="add" size={32} color="#fff" />
         </TouchableOpacity>
       )}
 
@@ -349,6 +365,10 @@ export default function ProjetDetailScreen({ route, navigation }) {
               multiline
             />
 
+            <ScrollView
+              style={styles.devList}
+              horizontal
+              showsHorizontalScrollIndicator={false}></ScrollView>
             <Text style={[styles.lbl, { color: C.muted }]}>
               Date d'échéance
             </Text>
@@ -395,11 +415,25 @@ export default function ProjetDetailScreen({ route, navigation }) {
                   setModalVisible(false);
                   setFormTitre("");
                   setFormDesc("");
+                  setFormDev(null);
                   setFormDate("");
                 }}>
-                <Text style={{ color: C.muted, fontWeight: "600" }}>
-                  Annuler
-                </Text>
+                {/* Bouton Annuler avec icône */}
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                  }}>
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={18}
+                    color={C.muted}
+                  />
+                  <Text style={{ color: C.muted, fontWeight: "600" }}>
+                    Annuler
+                  </Text>
+                </View>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.btnSave, { backgroundColor: C.primary }]}
@@ -408,10 +442,27 @@ export default function ProjetDetailScreen({ route, navigation }) {
                 {saving ? (
                   <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                  <Text
-                    style={{ color: "#fff", fontWeight: "bold", fontSize: 15 }}>
-                    Créer
-                  </Text>
+                  /* Bouton Créer avec icône */
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                    }}>
+                    <Ionicons
+                      name="checkmark-circle-outline"
+                      size={18}
+                      color="#fff"
+                    />
+                    <Text
+                      style={{
+                        color: "#fff",
+                        fontWeight: "bold",
+                        fontSize: 15,
+                      }}>
+                      Créer
+                    </Text>
+                  </View>
                 )}
               </TouchableOpacity>
             </View>
@@ -512,7 +563,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 6,
   },
-  fabText: { color: "#fff", fontSize: 34, lineHeight: 38, fontWeight: "300" },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -548,4 +598,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   btnSave: { flex: 1, padding: 14, borderRadius: 12, alignItems: "center" },
+  lbl: { fontSize: 13, marginBottom: 4, marginTop: 12 },
 });
