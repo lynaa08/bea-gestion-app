@@ -1,3 +1,4 @@
+
 // src/services/NotificationService.js
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
@@ -79,7 +80,7 @@ async function _pollOnce(onNewNotif) {
     for (const n of nouvelles) {
       _lastNotifIds.add(n.id);
       await sendLocalNotification(
-        n.titre || "Nouvelle notification",  
+        n.titre || " Nouvelle notification",
         n.message || "",
         { notifId: n.id, projetId: n.projetId },
       );
