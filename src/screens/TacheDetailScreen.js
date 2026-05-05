@@ -47,6 +47,13 @@ export default function TacheDetailScreen({ route, navigation }) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Mettre le titre de la tâche dans le header natif
+  useEffect(() => {
+    if (tache?.titre) {
+      navigation.setOptions({ title: tache.titre });
+    }
+  }, [tache, navigation]);
+
   const checkDeadline = (t, C) => {
     if (!t?.dateEcheance || t.statut === "TERMINEE") return;
     const echeance = new Date(t.dateEcheance);

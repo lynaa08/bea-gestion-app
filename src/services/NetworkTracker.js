@@ -140,22 +140,22 @@ export function logNetworkSummary() {
     parseFloat(s.totalMB) < 1 ? "🟢" : parseFloat(s.totalMB) < 5 ? "🟡" : "🔴";
 
   console.log(
-    `│  📡 Données envoyées  : ↑ ${_formatBytes(_bytesSent).padStart(10)}`,
+    `│   Données envoyées  : ↑ ${_formatBytes(_bytesSent).padStart(10)}`,
   );
   console.log(
-    `│  📡 Données reçues    : ↓ ${_formatBytes(_bytesReceived).padStart(10)}`,
+    `│   Données reçues    : ↓ ${_formatBytes(_bytesReceived).padStart(10)}`,
   );
   console.log(
-    `│  📡 Total réseau      : ${icon} ${_formatBytes(_bytesSent + _bytesReceived).padStart(10)} (${s.totalMB} MB)`,
+    `│   Total réseau      : ${icon} ${_formatBytes(_bytesSent + _bytesReceived).padStart(10)} (${s.totalMB} MB)`,
   );
   console.log(
-    `│  💰 Coût estimé       : ~${cout.coutDZD} DZD  (tarif ~0.5 DZD/MB)`,
+    `│   Coût estimé       : ~${cout.coutDZD} DZD  (tarif ~0.5 DZD/MB)`,
   );
-  console.log(`│  🔄 Appels API        : ${s.callCount} requêtes`);
+  console.log(`│    Appels API        : ${s.callCount} requêtes`);
 
   if (s.callCount > 0) {
     const moy = Math.round((_bytesSent + _bytesReceived) / s.callCount);
-    console.log(`│  📊 Moyenne / appel   : ${_formatBytes(moy)}`);
+    console.log(`│   Moyenne / appel   : ${_formatBytes(moy)}`);
   }
 }
 

@@ -77,18 +77,18 @@ export default function DashboardScreen({ navigation }) {
 
   if (loading)
     return (
-      <View style={[styles.center, { backgroundColor: "#F1F5F9" }]}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View style={[styles.center, { backgroundColor: C.bg }]}>
+        <ActivityIndicator size="large" color={C.accent} />
       </View>
     );
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: "#F1F5F9" }}
+      style={{ flex: 1, backgroundColor: C.bg }}
       contentContainerStyle={{ paddingBottom: 40 }}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.accent} />
       }>
       <StatusBar barStyle="light-content" />
 
@@ -98,9 +98,9 @@ export default function DashboardScreen({ navigation }) {
 
         {/* Texte */}
         <View style={{ flex: 1, marginLeft: 14 }}>
-          <Text style={styles.headerLabel}>Accueil</Text>
-          <Text style={styles.headerGreeting}>Bonjour, {firstName} </Text>
-          <Text style={styles.headerSub}>Ravi de vous revoir !</Text>
+          <Text style={[styles.headerLabel, { color: C.text }]}>Accueil</Text>
+          <Text style={[styles.headerGreeting, { color: C.text }]}>Bonjour, {firstName} </Text>
+          <Text style={[styles.headerSub, { color: C.muted }]}>Ravi de vous revoir !</Text>
           <View style={styles.headerUnderline} />
         </View>
       </View>
@@ -134,22 +134,22 @@ export default function DashboardScreen({ navigation }) {
       {notifs.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Notifications récentes</Text>
+            <Text style={[styles.sectionTitle, { color: C.text }]}>Notifications récentes</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate("Notifications")}
               style={styles.seeAllBtn}>
-              <Text style={styles.seeAllText}>Voir tout</Text>
-              <MaterialIcons name="chevron-right" size={16} color="#2563EB" />
+              <Text style={[styles.seeAllText, { color: C.accent }]}>Voir tout</Text>
+              <MaterialIcons name="chevron-right" size={16} color={C.accent} />
             </TouchableOpacity>
           </View>
 
-          <View style={styles.notifCard}>
+          <View style={[styles.notifCard, { backgroundColor: C.card }]}>
             {notifs.map((n, idx) => (
               <View
                 key={n.id}
                 style={[
                   styles.notifRow,
-                  idx > 0 && { borderTopWidth: 1, borderTopColor: "#F1F5F9" },
+                  idx > 0 && { borderTopWidth: 1, borderTopColor: C.border },
                 ]}>
                 {/* Barre latérale bleue */}
                 <View style={styles.notifAccent} />
@@ -167,7 +167,7 @@ export default function DashboardScreen({ navigation }) {
                     </View>
                     <Text style={styles.notifTime}>{n.dateCreation || n.date || "Il y a 2h"}</Text>
                   </View>
-                  <Text style={styles.notifMessage} numberOfLines={2}>
+                  <Text style={[styles.notifMessage, { color: C.text }]} numberOfLines={2}>
                     {n.message}
                   </Text>
                 </View>
@@ -187,22 +187,20 @@ export default function DashboardScreen({ navigation }) {
       {/* ── Mes Projets ── */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Mes projets</Text>
+          <Text style={[styles.sectionTitle, { color: C.text }]}>Mes projets</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate("Projets")}
             style={styles.seeAllBtn}>
-            <Text style={styles.seeAllText}>Tous les projets</Text>
-            <MaterialIcons name="chevron-right" size={16} color="#2563EB" />
           </TouchableOpacity>
         </View>
 
         {projets.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <MaterialIcons name="folder-open" size={44} color="#CBD5E1" />
-            <Text style={styles.emptyText}>Aucun projet assigné</Text>
+          <View style={[styles.emptyCard, { backgroundColor: C.card }]}>
+            <MaterialIcons name="folder-open" size={44} color={C.muted} />
+            <Text style={[styles.emptyText, { color: C.muted }]}>Aucun projet assigné</Text>
           </View>
         ) : (
-          <View style={styles.projetList}>
+          <View style={[styles.projetList, { backgroundColor: C.card }]}>
             {projets.map((p, idx) => {
               const sc = statutConfig(p.statut);
               const letter = (p.nom || "?")[0].toUpperCase();
@@ -212,7 +210,7 @@ export default function DashboardScreen({ navigation }) {
                   key={p.id}
                   style={[
                     styles.projetRow,
-                    idx < projets.length - 1 && styles.projetRowBorder,
+                    idx < projets.length - 1 && { ...styles.projetRowBorder, borderBottomColor: C.border },
                   ]}
                   onPress={() =>
                     navigation.navigate("ProjetDetail", { projetId: p.id })
@@ -225,17 +223,11 @@ export default function DashboardScreen({ navigation }) {
 
                   {/* Nom + matricule */}
                   <View style={{ flex: 1, marginLeft: 14 }}>
-                    <Text style={styles.projetNom} numberOfLines={1}>
+                    <Text style={[styles.projetNom, { color: C.text }]} numberOfLines={1}>
                       {p.nom}
                     </Text>
                     <View style={styles.projetSubRow}>
-                      <View
-                        style={[
-                          styles.projetDot,
-                          { backgroundColor: sc.color },
-                        ]}
-                      />
-                      <Text style={styles.projetMeta}>
+                      <Text style={[styles.projetMeta, { color: C.muted }]}>
                         {p.statut?.includes("RETARD") || p.statut?.includes("retard")
                           ? "En retard"
                           : "En cours"}{" "}
@@ -297,10 +289,9 @@ header: {
     borderWidth: 2,
     borderColor: "#1E40AF",
   },
-  headerLabel: { color: "#1E40AF", fontSize: 18, marginBottom: 2 },
-  headerGreeting: { color: "#1E40AF", fontSize: 28
-    , fontWeight: "700" },
-  headerSub: { color: "#1E40AF", fontSize: 13, marginTop: 2 },
+  headerLabel: { fontSize: 18, marginBottom: 2 },
+  headerGreeting: { fontSize: 28, fontWeight: "700" },
+  headerSub: { fontSize: 13, marginTop: 2 },
   headerUnderline: {
     marginTop: 8,
     width: 32,
@@ -365,13 +356,12 @@ header: {
     alignItems: "center",
     marginBottom: 12,
   },
-  sectionTitle: { fontSize: 17, fontWeight: "700", color: "#0F172A" },
+  sectionTitle: { fontSize: 17, fontWeight: "700" },
   seeAllBtn: { flexDirection: "row", alignItems: "center" },
-  seeAllText: { color: "#2563EB", fontSize: 13, fontWeight: "500" },
+  seeAllText: { fontSize: 13, fontWeight: "500" },
 
   /* Notif Card */
   notifCard: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     overflow: "hidden",
     elevation: 2,
@@ -416,12 +406,11 @@ header: {
   },
   notifTagText: { color: "#1D4ED8", fontSize: 11, fontWeight: "600" },
   notifTime: { color: "#94A3B8", fontSize: 11 },
-  notifMessage: { color: "#1E293B", fontSize: 13, fontWeight: "500" },
+  notifMessage: { fontSize: 13, fontWeight: "500" },
   notifBtn: { marginLeft: 8 },
 
   /* Projets */
   projetList: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     overflow: "hidden",
     elevation: 2,
@@ -448,10 +437,10 @@ header: {
     alignItems: "center",
   },
   projetAvatarText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-  projetNom: { color: "#0F172A", fontWeight: "600", fontSize: 14 },
+  projetNom: { fontWeight: "600", fontSize: 14 },
   projetSubRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
   projetDot: { width: 7, height: 7, borderRadius: 4, marginRight: 6 },
-  projetMeta: { color: "#64748B", fontSize: 12 },
+  projetMeta: { fontSize: 12 },
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -462,10 +451,9 @@ header: {
 
   /* Empty */
   emptyCard: {
-    backgroundColor: "#fff",
     borderRadius: 16,
     padding: 36,
     alignItems: "center",
   },
-  emptyText: { color: "#94A3B8", fontSize: 14, marginTop: 10 },
+  emptyText: { fontSize: 14, marginTop: 10 },
 });
