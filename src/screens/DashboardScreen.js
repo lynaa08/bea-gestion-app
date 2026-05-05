@@ -8,10 +8,30 @@ import {
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  StatusBar,
 } from "react-native";
 import { getNotifications, markNotifRead, getMesProjets } from "../api/api";
-import { useAuth, canCreateTache } from "../context/AuthContext";
+import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+
+// Couleur de l'avatar selon le nom du projet
+const avatarColor = (nom) => {
+  const colors = ["#2563EB", "#7C3AED", "#F59E0B", "#EF4444", "#10B981", "#EC4899"];
+  if (!nom) return colors[0];
+  return colors[nom.charCodeAt(0) % colors.length];
+};
+
+const statutConfig = (s) => {
+  if (!s) return { label: "N/A", color: "#6B7280", bg: "#F3F4F6" };
+  const sl = s.toUpperCase();
+  if (sl.includes("ACTIF") || sl.includes("EN_COURS"))
+    return { label: s, color: "#059669", bg: "#D1FAE5" };
+  if (sl.includes("TERMINE"))
+    return { label: s, color: "#2563EB", bg: "#DBEAFE" };
+  if (sl.includes("RETARD"))
+    return { label: s, color: "#DC2626", bg: "#FEE2E2" };
+  return { label: s, color: "#D97706", bg: "#FEF3C7" };
+};
 
 export default function DashboardScreen({ navigation }) {
   const { C } = useTheme();
@@ -37,6 +57,7 @@ export default function DashboardScreen({ navigation }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
   const onRefresh = () => {
     setRefreshing(true);
     loadData();
@@ -47,197 +68,404 @@ export default function DashboardScreen({ navigation }) {
     setNotifs((prev) => prev.filter((n) => n.id !== id));
   };
 
-  const statutColor = (s) => {
-    if (!s) return C.muted;
-    const sl = s.toUpperCase();
-    if (sl.includes("ACTIF") || sl.includes("EN_COURS")) return C.success;
-    if (sl.includes("TERMINE")) return C.primary;
-    if (sl.includes("RETARD")) return C.danger;
-    return C.warning;
-  };
+  const firstName = user?.prenom || user?.nom || "Dev";
+  const initials = firstName.slice(0, 2).toUpperCase();
+  const activeCount = projets.filter((p) => {
+    const s = (p.statut || "").toUpperCase();
+    return s.includes("ACTIF") || s.includes("EN_COURS");
+  }).length;
 
   if (loading)
     return (
-      <View style={[styles.center, { backgroundColor: C.bg }]}>
-        <ActivityIndicator size="large" color={C.accent} />
+      <View style={[styles.center, { backgroundColor: "#F1F5F9" }]}>
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: C.bg }}
-      contentContainerStyle={{ paddingBottom: 30 }}
+      style={{ flex: 1, backgroundColor: "#F1F5F9" }}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }>
-      {/* ── Notifications ── */}
-      {notifs.length > 0 && (
-        <View
-          style={[
-            styles.card,
-            { backgroundColor: C.card, borderColor: C.border },
-          ]}>
-          <View style={styles.cardHeader}>
-            <Text style={[styles.cardTitle, { color: C.text }]}>
-              {" "}
-              Notifications
-            </Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate("Notifications")}>
-              <Text style={{ color: C.accent, fontSize: 13 }}>Voir tout</Text>
-            </TouchableOpacity>
-          </View>
-          {notifs.map((n) => (
-            <View
-              key={n.id}
-              style={[styles.notifRow, { borderTopColor: C.border }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: C.muted, fontSize: 11, marginBottom: 2 }}>
-                  {n.dateCreation || n.date}
-                </Text>
-                <Text style={{ color: C.text, fontSize: 13 }} numberOfLines={2}>
-                  {n.message}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => dismissNotif(n.id)}
-                style={[styles.notifBtn, { backgroundColor: C.btnOkBg }]}>
-                <Text
-                  style={{
-                    color: C.success,
-                    fontWeight: "bold",
-                    fontSize: 16,
-                  }}>
-                  ✓
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
-      )}
+      <StatusBar barStyle="light-content" />
 
-      {/* ── Projets ── */}
-      <View style={styles.sectionHeader}>
-        <Text style={[styles.sectionTitle, { color: C.text }]}>
-          {" "}
-          Mes Projets
-        </Text>
+      {/* ── Header bleu ── */}
+      <View style={styles.header}>
+      
+
+        {/* Texte */}
+        <View style={{ flex: 1, marginLeft: 14 }}>
+          <Text style={styles.headerLabel}>Accueil</Text>
+          <Text style={styles.headerGreeting}>Bonjour, {firstName} </Text>
+          <Text style={styles.headerSub}>Ravi de vous revoir !</Text>
+          <View style={styles.headerUnderline} />
+        </View>
       </View>
 
-      {projets.length === 0 ? (
-        <View
-          style={[
-            styles.emptyCard,
-            { backgroundColor: C.card, borderColor: C.border },
-          ]}>
-          <MaterialIcons name="folder-open" size={40} color={C.border} />
-          <Text style={{ color: C.muted, fontSize: 14, marginTop: 8 }}>
-            Aucun projet assigné
-          </Text>
+      {/* ── Carte Projets Actifs ── */}
+      <View style={styles.activeCard}>
+        <View style={styles.activeCardIcon}>
+          <MaterialIcons name="folder" size={28} color="#2563EB" />
         </View>
-      ) : (
-        projets.map((p) => (
-          <TouchableOpacity
-            key={p.id}
-            style={[
-              styles.projetCard,
-              { backgroundColor: C.card, borderColor: C.border },
-            ]}
-            onPress={() =>
-              navigation.navigate("ProjetDetail", { projetId: p.id })
-            }
-            activeOpacity={0.8}>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: C.text, fontWeight: "bold", fontSize: 15 }}>
-                {p.nom}
-              </Text>
-              <Text style={{ color: C.muted, fontSize: 12, marginTop: 2 }}>
-                {p.matricule}
-              </Text>
-            </View>
+        <View style={{ flex: 1, marginLeft: 16 }}>
+          <Text style={styles.activeCount}>{activeCount || projets.length}</Text>
+          <Text style={styles.activeLabel}>projets en cours</Text>
+        </View>
+
+
+        {/* Décoration */}
+        <View style={styles.activeDecoration}>
+          {[0, 1, 2].map((i) => (
             <View
-              style={{
-                paddingHorizontal: 8,
-                paddingVertical: 3,
-                borderRadius: 8,
-                backgroundColor: statutColor(p.statut) + "22",
-                marginLeft: 8,
-              }}>
-              <Text
-                style={{
-                  color: statutColor(p.statut),
-                  fontSize: 11,
-                  fontWeight: "600",
-                }}>
-                {p.statut || "N/A"}
-              </Text>
-            </View>
-            <Text style={{ color: C.muted, fontSize: 22, marginLeft: 4 }}>
-              {" "}
-              ›
-            </Text>
-          </TouchableOpacity>
-        ))
+              key={i}
+              style={[
+                styles.decorFolder,
+                { right: i * 14, bottom: i * 6, opacity: 0.15 + i * 0.12 },
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+
+      {/* ── Notifications récentes ── */}
+      {notifs.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Notifications récentes</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("Notifications")}
+              style={styles.seeAllBtn}>
+              <Text style={styles.seeAllText}>Voir tout</Text>
+              <MaterialIcons name="chevron-right" size={16} color="#2563EB" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.notifCard}>
+            {notifs.map((n, idx) => (
+              <View
+                key={n.id}
+                style={[
+                  styles.notifRow,
+                  idx > 0 && { borderTopWidth: 1, borderTopColor: "#F1F5F9" },
+                ]}>
+                {/* Barre latérale bleue */}
+                <View style={styles.notifAccent} />
+
+                {/* Icône */}
+                <View style={styles.notifIconWrap}>
+                  <MaterialIcons name="assignment" size={20} color="#2563EB" />
+                </View>
+
+                {/* Contenu */}
+                <View style={{ flex: 1 }}>
+                  <View style={styles.notifTagRow}>
+                    <View style={styles.notifTag}>
+                      <Text style={styles.notifTagText}>Tâche assignée</Text>
+                    </View>
+                    <Text style={styles.notifTime}>{n.dateCreation || n.date || "Il y a 2h"}</Text>
+                  </View>
+                  <Text style={styles.notifMessage} numberOfLines={2}>
+                    {n.message}
+                  </Text>
+                </View>
+
+                {/* Bouton OK */}
+                <TouchableOpacity
+                  onPress={() => dismissNotif(n.id)}
+                  style={styles.notifBtn}>
+                  <MaterialIcons name="check-circle-outline" size={22} color="#059669" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </View>
       )}
+
+      {/* ── Mes Projets ── */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Mes projets</Text>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Projets")}
+            style={styles.seeAllBtn}>
+            <Text style={styles.seeAllText}>Tous les projets</Text>
+            <MaterialIcons name="chevron-right" size={16} color="#2563EB" />
+          </TouchableOpacity>
+        </View>
+
+        {projets.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <MaterialIcons name="folder-open" size={44} color="#CBD5E1" />
+            <Text style={styles.emptyText}>Aucun projet assigné</Text>
+          </View>
+        ) : (
+          <View style={styles.projetList}>
+            {projets.map((p, idx) => {
+              const sc = statutConfig(p.statut);
+              const letter = (p.nom || "?")[0].toUpperCase();
+              const bg = avatarColor(p.nom);
+              return (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[
+                    styles.projetRow,
+                    idx < projets.length - 1 && styles.projetRowBorder,
+                  ]}
+                  onPress={() =>
+                    navigation.navigate("ProjetDetail", { projetId: p.id })
+                  }
+                  activeOpacity={0.7}>
+                  {/* Avatar lettre */}
+                  <View style={[styles.projetAvatar, { backgroundColor: bg }]}>
+                    <Text style={styles.projetAvatarText}>{letter}</Text>
+                  </View>
+
+                  {/* Nom + matricule */}
+                  <View style={{ flex: 1, marginLeft: 14 }}>
+                    <Text style={styles.projetNom} numberOfLines={1}>
+                      {p.nom}
+                    </Text>
+                    <View style={styles.projetSubRow}>
+                      <View
+                        style={[
+                          styles.projetDot,
+                          { backgroundColor: sc.color },
+                        ]}
+                      />
+                      <Text style={styles.projetMeta}>
+                        {p.statut?.includes("RETARD") || p.statut?.includes("retard")
+                          ? "En retard"
+                          : "En cours"}{" "}
+                        • {p.matricule}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Badge statut */}
+                  <View style={[styles.badge, { backgroundColor: sc.bg }]}>
+                    <Text style={[styles.badgeText, { color: sc.color }]}>
+                      {p.statut?.toUpperCase().includes("RETARD")
+                        ? "RETARD"
+                        : "ACTIF"}
+                    </Text>
+                  </View>
+
+                  <MaterialIcons name="chevron-right" size={20} color="#94A3B8" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  card: {
-    margin: 16,
-    marginBottom: 0,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-  cardTitle: { fontWeight: "bold", fontSize: 15 },
-  notifRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    gap: 8,
-  },
-  notifBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+
+  /* Header */
+header: {
+  backgroundColor: "transparent", 
+  paddingTop: 40,
+  paddingBottom: 10,
+  paddingHorizontal: 20,
+},
+  avatarWrapper: { position: "relative" },
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
+  avatarText: { color: "#fff", fontWeight: "700", fontSize: 18 },
+  onlineDot: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#22C55E",
+    borderWidth: 2,
+    borderColor: "#1E40AF",
+  },
+  headerLabel: { color: "#1E40AF", fontSize: 18, marginBottom: 2 },
+  headerGreeting: { color: "#1E40AF", fontSize: 28
+    , fontWeight: "700" },
+  headerSub: { color: "#1E40AF", fontSize: 13, marginTop: 2 },
+  headerUnderline: {
+    marginTop: 8,
+    width: 32,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.5)",
+  },
+
+  /* Carte Projets Actifs */
+  activeCard: {
+    margin: 16,
+    backgroundColor: "#2563EB",
+    borderRadius: 18,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    overflow: "hidden",
+    elevation: 6,
+    shadowColor: "#2563EB",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  activeCardIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  activeCount: {
+    color: "#fff",
+    fontSize: 32,
+    fontWeight: "800",
+    lineHeight: 36,
+  },
+  activeLabel: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  activeMotivation: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  activeDecoration: { position: "absolute", right: 16, bottom: 0, top: 0 },
+  decorFolder: {
+    position: "absolute",
+    width: 48,
+    height: 38,
+    borderRadius: 8,
+    backgroundColor: "#fff",
+  },
+
+  /* Sections */
+  section: { marginTop: 8, paddingHorizontal: 16 },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginHorizontal: 16,
-    marginTop: 20,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  sectionTitle: { fontWeight: "bold", fontSize: 16 },
-  addBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  addBtnText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  projetCard: {
+  sectionTitle: { fontSize: 17, fontWeight: "700", color: "#0F172A" },
+  seeAllBtn: { flexDirection: "row", alignItems: "center" },
+  seeAllText: { color: "#2563EB", fontSize: 13, fontWeight: "500" },
+
+  /* Notif Card */
+  notifCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  notifRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
+    paddingVertical: 14,
+    paddingRight: 14,
   },
-  emptyCard: {
-    margin: 16,
-    padding: 30,
+  notifAccent: {
+    width: 4,
+    alignSelf: "stretch",
+    backgroundColor: "#2563EB",
+    borderRadius: 2,
+    marginRight: 10,
+  },
+  notifIconWrap: {
+    width: 44,
+    height: 44,
     borderRadius: 12,
+    backgroundColor: "#EFF6FF",
+    justifyContent: "center",
     alignItems: "center",
-    borderWidth: 1,
+    marginRight: 12,
   },
+  notifTagRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  notifTag: {
+    backgroundColor: "#DBEAFE",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  notifTagText: { color: "#1D4ED8", fontSize: 11, fontWeight: "600" },
+  notifTime: { color: "#94A3B8", fontSize: 11 },
+  notifMessage: { color: "#1E293B", fontSize: 13, fontWeight: "500" },
+  notifBtn: { marginLeft: 8 },
+
+  /* Projets */
+  projetList: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  projetRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  projetRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+  },
+  projetAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  projetAvatarText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  projetNom: { color: "#0F172A", fontWeight: "600", fontSize: 14 },
+  projetSubRow: { flexDirection: "row", alignItems: "center", marginTop: 3 },
+  projetDot: { width: 7, height: 7, borderRadius: 4, marginRight: 6 },
+  projetMeta: { color: "#64748B", fontSize: 12 },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 8,
+  },
+  badgeText: { fontSize: 11, fontWeight: "700" },
+
+  /* Empty */
+  emptyCard: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 36,
+    alignItems: "center",
+  },
+  emptyText: { color: "#94A3B8", fontSize: 14, marginTop: 10 },
 });
