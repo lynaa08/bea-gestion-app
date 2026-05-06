@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export const BASE_URL = "http://192.168.100.22:8081/api";
+export const BASE_URL = "http://192.168.1.70:8081/api";
 
 async function getToken() {
   return await AsyncStorage.getItem("token");
@@ -95,7 +95,8 @@ export async function updateTacheStatut(id, statut) {
   if (!res.ok) throw new Error("Erreur mise à jour tâche");
   return res.json();
 }
-
+export async function deleteTache(id) {
+  await apiFetch(`/taches/${id}`, { method: "DELETE" });}
 // ─── Sous-tâches (to-do list dans une tâche) ──────────────────────────────
 export async function getSousTaches(tacheId) {
   const res = await apiFetch(`/taches/${tacheId}/sous-taches`);

@@ -54,6 +54,7 @@ export default function ProjetDetailScreen({ route, navigation }) {
   const [formTitre, setFormTitre] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formDate, setFormDate] = useState("");
+  const [formDev, setFormDev] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {
@@ -74,6 +75,13 @@ export default function ProjetDetailScreen({ route, navigation }) {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Mettre le nom du projet comme titre du header natif
+  useEffect(() => {
+    if (projet?.nom) {
+      navigation.setOptions({ title: projet.nom });
+    }
+  }, [projet, navigation]);
 
   const handleCreateTache = async () => {
     if (!formTitre.trim()) {
@@ -124,10 +132,10 @@ export default function ProjetDetailScreen({ route, navigation }) {
   return (
     <View style={{ flex: 1, backgroundColor: C.bg }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={[styles.nomBox, { backgroundColor: C.primary }]}>
-          <Text style={styles.nomProjet}>{projet.nom}</Text>
-          <View
-            style={[styles.statutBadge, { backgroundColor: C.accent + "33" }]}>
+        {/* Statut badge en haut de la page (sans le bandeau bleu) */}
+        <View style={[styles.card, { backgroundColor: C.card, borderColor: C.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }]}>
+          <Text style={{ color: C.text, fontWeight: "700", fontSize: 15, flex: 1 }}>{projet.nom}</Text>
+          <View style={[styles.statutBadge, { backgroundColor: C.accent + "33" }]}>
             <Text style={{ fontSize: 12, fontWeight: "600", color: C.accent }}>
               {projet.statut || "N/A"}
             </Text>
