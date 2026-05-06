@@ -119,7 +119,7 @@ function _logSummary() {
   console.log("║         BEA Tasks — Session Summary             ║");
   console.log("╠══════════════════════════════════════════════════╣");
   console.log(`║   Durée            : ${elapsedMin} minutes`);
-  console.log(`║   Appels API       : ${stats.callCount}`);
+  console.log(`║  Appels API       : ${stats.callCount}`);
   console.log(`║   Données envoyées : ${stats.sentKB} KB`);
   console.log(`║   Données reçues   : ${stats.receivedKB} KB`);
   console.log(

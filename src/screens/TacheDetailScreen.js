@@ -114,8 +114,8 @@ export default function TacheDetailScreen({ route, navigation }) {
   const deadlineInfo = getDeadlineInfo(tache.dateEcheance, tache.statut, C);
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+<KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bg }} behavior="padding" keyboardVerticalOffset={Platform.OS === "android" ? 80 : 0}>
+  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 20 }}>
 
         {/* Header */}
         <View style={[styles.header, { backgroundColor: C.card, borderBottomColor: statutColor }]}>
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   sousTacheRow: { flexDirection: "row", alignItems: "center", padding: 14, borderBottomWidth: 1, gap: 12 },
   checkbox: { width: 24, height: 24, borderRadius: 6, borderWidth: 2, justifyContent: "center", alignItems: "center" },
   deleteBtn: { padding: 4 },
-  inputBar: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", borderTopWidth: 1, padding: 12, gap: 10, elevation: 8 },
+  inputBar: { flexDirection: "row", alignItems: "center", borderTopWidth: 1, padding: 12, gap: 10, elevation: 8 },
   inputField: { flex: 1, borderWidth: 1, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14 },
   addBtn: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" },
 });

@@ -54,6 +54,7 @@ export default function ProjetDetailScreen({ route, navigation }) {
   const [formTitre, setFormTitre] = useState("");
   const [formDesc, setFormDesc] = useState("");
   const [formDate, setFormDate] = useState("");
+  const [formDev, setFormDev] = useState(null);
   const [saving, setSaving] = useState(false);
 
   const loadData = useCallback(async () => {

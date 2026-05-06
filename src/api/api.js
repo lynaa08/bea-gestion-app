@@ -95,7 +95,8 @@ export async function updateTacheStatut(id, statut) {
   if (!res.ok) throw new Error("Erreur mise à jour tâche");
   return res.json();
 }
-
+export async function deleteTache(id) {
+  await apiFetch(`/taches/${id}`, { method: "DELETE" });}
 // ─── Sous-tâches (to-do list dans une tâche) ──────────────────────────────
 export async function getSousTaches(tacheId) {
   const res = await apiFetch(`/taches/${tacheId}/sous-taches`);

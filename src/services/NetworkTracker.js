@@ -151,7 +151,7 @@ export function logNetworkSummary() {
   console.log(
     `│   Coût estimé       : ~${cout.coutDZD} DZD  (tarif ~0.5 DZD/MB)`,
   );
-  console.log(`│    Appels API        : ${s.callCount} requêtes`);
+  console.log(`│   Appels API        : ${s.callCount} requêtes`);
 
   if (s.callCount > 0) {
     const moy = Math.round((_bytesSent + _bytesReceived) / s.callCount);

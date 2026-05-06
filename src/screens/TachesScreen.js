@@ -15,7 +15,7 @@ import {
   Platform,
   Alert,
 } from "react-native";
-import { getMesTaches, createTache, getMesProjets } from "../api/api";
+import { getMesTaches, createTache, getMesProjets , deleteTache } from "../api/api";
 import {
   useAuth,
   canCreateTache,
@@ -376,6 +376,21 @@ export default function TachesScreen({ navigation }) {
                   <Ionicons name="chevron-forward" size={11} color={C.muted} />
                 </View>
               </View>
+              <TouchableOpacity
+  onPress={() => Alert.alert("Supprimer", "Confirmer la suppression ?", [
+    { text: "Annuler", style: "cancel" },
+    { text: "Supprimer", style: "destructive", onPress: async () => {
+try {
+          await deleteTache(t.id);
+          setTaches((prev) => prev.filter((x) => x.id !== t.id)); // retire de la liste immédiatement
+        } catch (e) {
+          Alert.alert("Erreur", e.message);
+        }
+    }},
+  ])}
+  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+  <Ionicons name="close-outline" size={18} color={C.danger} />
+</TouchableOpacity>
             </TouchableOpacity>
           );
         }}
